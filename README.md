@@ -1,3 +1,4 @@
-SysY_Compiler
+### Sys_Y compiler
 
-优化前的版本，debug结束
+* basic version 未优化版本
+* optimized version 优化版本
