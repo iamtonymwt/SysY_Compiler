@@ -398,6 +398,9 @@ void genMipsCode() {
 //                break;
 //            }
             case FUNC: {
+                if (midcode.x == funcvMap[0].ident) {
+                    mipsCodeTable.emplace_back(mips_j, "main");
+                }
                 mipsCodeTable.emplace_back(mips_label, midcode.x);//函数名label
                 break;
             }

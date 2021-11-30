@@ -13,7 +13,7 @@ int vNumber = 0; //全局变量序号
 int vAddress = 0;   //相对函数头地址 乘了4
 extern string curFunction;
 
-//生成一个中间变量，存至vTable
+//生成一个多次变量，存至vTable
 //return: fName
 string addNewV() {
     vNumber ++;
@@ -21,6 +21,24 @@ string addNewV() {
     a.num = vNumber;
     a.dimCount = 0;
     a.rName = "variable_" + to_string(vNumber);
+    a.fName = a.rName;
+    a.level = level;
+    a.valid = true;
+    a.address = vAddress;
+    a.func = curFunction;
+    vTable.push_back(a);
+    vAddress += INTOFFSET;
+    return a.fName;
+}
+
+//生成一个中间变量（只是用两次），存放至vTable
+//return: fName
+string addInsV() {
+    vNumber ++;
+    Variable a;
+    a.num = vNumber;
+    a.dimCount = 0;
+    a.rName = "ins_" + to_string(vNumber);
     a.fName = a.rName;
     a.level = level;
     a.valid = true;

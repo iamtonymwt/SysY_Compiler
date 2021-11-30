@@ -27,6 +27,7 @@ struct Function{
 };
 
 string addNewV();
+string addInsV();
 string addOldV(string rName, int dim, int *d = nullptr);
 string getOldVName(string rName);
 void checkvTable();

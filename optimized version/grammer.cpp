@@ -249,7 +249,6 @@ bool FuncDef() {
     f.type = FuncType();
 //    print();
     string ident = neotoken;
-    midCodeTable.emplace_back(GOTO, ident+"_end");
     f.ident = ident;
     curFunction = ident;
     vector<Variable> params;
@@ -270,7 +269,6 @@ bool FuncDef() {
     if (midCodeTable[midCodeTable.size()-1].op != RET) {
         midCodeTable.emplace_back(RET);
     }
-    midCodeTable.emplace_back(LABEL, ident+"_end");
     curFunction = "";
     funcvMap[funcvMap.size()-1].length = vAddress + 8;
     return true;
@@ -436,8 +434,8 @@ bool Stmt() {
 //                print();
                 getsymNP();
                 Stmt();
+                midCodeTable.emplace_back(LABEL, if_end);
             }
-            midCodeTable.emplace_back(LABEL, if_end);
             break;
         }
 
@@ -576,7 +574,7 @@ bool Stmt() {
                         midCodeTable.emplace_back(SCAN, lval);
                     }
                     else {
-                        string newV = addNewV();
+                        string newV = addInsV();
                         midCodeTable.emplace_back(SCAN, newV);
                         midCodeTable.emplace_back(PUTARRAY, getVarWithoutOffset(lval), offset, newV);
                     }
@@ -592,8 +590,6 @@ bool Stmt() {
                         midCodeTable.emplace_back(ASSIGNOP, lval, rval);
                     }
                     else {
-//                        string newV = addNewV();
-//                        midCodeTable.emplace_back(ASSIGNOP, newV, rval);
                         midCodeTable.emplace_back(PUTARRAY, getVarWithoutOffset(lval), offset, rval);
                     }
 //                    print();
@@ -673,7 +669,7 @@ string LValGetValue(string ident, vector<string> indexs) {
                     return variable.fName;
                     break;
                 case 1: {
-                    string neoV = addNewV();
+                    string neoV = addInsV();
                     midCodeTable.emplace_back(GETARRAY, neoV, variable.fName, indexs[0]);
                     return neoV;
                     break;
@@ -681,7 +677,7 @@ string LValGetValue(string ident, vector<string> indexs) {
                 case 2: {
                     string neoV = merge(MULTOP, indexs[0], to_string(variable.dim[1]));
                     string neoVV = merge(PLUSOP, neoV, indexs[1]);
-                    string neoVVV = addNewV();
+                    string neoVVV = addInsV();
                     midCodeTable.emplace_back(GETARRAY, neoVVV, variable.fName, neoVV);
                     return neoVVV;
                     break;
@@ -813,7 +809,7 @@ string UnaryExp() {
             for (int i = funcvMap.size()-1; i >= 0 ; i--) {
                 if (funcvMap[i].ident == ident) {
                     if (funcvMap[i].type == 1) {
-                        neoVar = addNewV();
+                        neoVar = addInsV();
                         midCodeTable.emplace_back(RETVALUE, neoVar, "RET");
                     }
                 }
@@ -993,7 +989,7 @@ string LAndExp(string andEndLabel) {
 
 //逻辑或表达式 LOrExp → LAndExp | LOrExp '||' LAndExp // 1.LAndExp 2.|| 均需覆盖
 string LOrExp() {
-    string neoVar = addNewV();
+    string neoVar = addNewV(); //此处的neoVar会被使用三次
     string andEndLabel = getLabel();
     string orEndLabel = getLabel();
     LAndExp(andEndLabel);

@@ -163,7 +163,7 @@ string merge(operation o, string left, string right = "") {
         return to_string(merge);
     }
     else  {
-        string merge = addNewV();
+        string merge = addInsV();
         midCodeTable.emplace_back(o, merge, left, right);
         return merge;
     }

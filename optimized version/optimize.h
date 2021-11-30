@@ -7,4 +7,6 @@
 
 #endif //OPTIMIZE_OPTIMIZE_H
 
+bool isInsVar(string ident);
+
 void optimize();
