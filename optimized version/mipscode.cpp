@@ -25,7 +25,7 @@ int paraCount = 0; //函数参数个数
  *  $sp函数尾,$fp函数头 运行栈（从低到高）：栈长、返回绝对地址、参数、局部变量
  *  $s1函数参数栈顶
  *  $ra函数ret
- *  $t0, $t1, $t2, $t3, $t4, $t5, $t6运算用
+ *  $t0, $t1, $t2 运算用
  *  $a0, $v0 与 syscall使用
  *  $s0 函数返回值
  *  hi, lo
@@ -304,28 +304,27 @@ void genMipsCode() {
                 getVar(offset, "$t0");
                 mipsCodeTable.emplace_back(mips_li, "$t1", "", "", INTOFFSET);
                 mipsCodeTable.emplace_back(mips_mult, "$t0", "$t1");
-                mipsCodeTable.emplace_back(mips_mflo, "$t2");//[]*4
+                mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
                 //top
                 string funcBelong = ident2var.find(midcode.z)->second.func;
                 int addr = ident2var.find(midcode.z)->second.address;
                 if (funcBelong.empty()) {
-                    mipsCodeTable.emplace_back(mips_li, "$t3", "", "", addr);
-                    mipsCodeTable.emplace_back(mips_add, "$t4", "$t3", "$gp");
+                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr);
+                    mipsCodeTable.emplace_back(mips_add, "$t1", "$t1", "$gp");
                     //绝对地址
-                    mipsCodeTable.emplace_back(mips_add, "$t5", "$t2", "$t4");//绝对地址
+                    mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
                 else {
-                    mipsCodeTable.emplace_back(mips_li, "$t3", "", "", addr + 8);
-                    mipsCodeTable.emplace_back(mips_add, "$t4", "$fp", "$t3");
+                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
+                    mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
                     //绝对地址
                     if ( ident2var.find(midcode.z)->second.dim[0] == 0) {
-                        mipsCodeTable.emplace_back(mips_lw, "$t5", "$t4", "", 0);
-                        mipsCodeTable.emplace_back(mips_move, "$t4", "$t5", "", 0);
+                        mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
                     }
-                    mipsCodeTable.emplace_back(mips_add, "$t5", "$t4", "$t2");//绝对地址
+                    mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
 
-                mipsCodeTable.emplace_back(mips_sw, "$t5", "$s1", "", 0);
+                mipsCodeTable.emplace_back(mips_sw, "$t2", "$s1", "", 0);
                 mipsCodeTable.emplace_back(mips_addi, "$s1", "$s1", "", 4);
                 break;
             }
@@ -422,28 +421,27 @@ void genMipsCode() {
                 getVar(offset, "$t0");
                 mipsCodeTable.emplace_back(mips_li, "$t1", "", "", INTOFFSET);
                 mipsCodeTable.emplace_back(mips_mult, "$t0", "$t1");
-                mipsCodeTable.emplace_back(mips_mflo, "$t2");//[]*4
+                mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
                 //top
                 string funcBelong = ident2var.find(midcode.x)->second.func;
                 int addr = ident2var.find(midcode.x)->second.address;
                 if (funcBelong.empty()) {
-                    mipsCodeTable.emplace_back(mips_li, "$t3", "", "", addr);
-                    mipsCodeTable.emplace_back(mips_add, "$t4", "$t3", "$gp");
+                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr);
+                    mipsCodeTable.emplace_back(mips_add, "$t1", "$t1", "$gp");
                     //绝对地址
-                    mipsCodeTable.emplace_back(mips_add, "$t5", "$t2", "$t4");//绝对地址
+                    mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
                 else {
-                    mipsCodeTable.emplace_back(mips_li, "$t3", "", "", addr + 8);
-                    mipsCodeTable.emplace_back(mips_add, "$t4", "$fp", "$t3");
+                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
+                    mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
                     //绝对地址
                     if ( ident2var.find(midcode.x)->second.dim[0] == 0) {
-                        mipsCodeTable.emplace_back(mips_lw, "$t5", "$t4", "", 0);
-                        mipsCodeTable.emplace_back(mips_move, "$t4", "$t5", "", 0);
+                        mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
                     }
-                    mipsCodeTable.emplace_back(mips_add, "$t5", "$t4", "$t2");//绝对地址
+                    mipsCodeTable.emplace_back(mips_add, "$t2", "$t1", "$t0");//绝对地址
                 }
-                mipsCodeTable.emplace_back(mips_lw, "$t6", "$t5", "", 0);
-                pushVar("$t6", midcode.z);
+                mipsCodeTable.emplace_back(mips_lw, "$t1", "$t2", "", 0);
+                pushVar("$t1", midcode.z);
                 break;
             }
             case PUTARRAY: {
@@ -452,29 +450,28 @@ void genMipsCode() {
                 getVar(offset, "$t0");
                 mipsCodeTable.emplace_back(mips_li, "$t1", "", "", INTOFFSET);
                 mipsCodeTable.emplace_back(mips_mult, "$t0", "$t1");
-                mipsCodeTable.emplace_back(mips_mflo, "$t2");//[]*4
+                mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
                 //top
                 string funcBelong = ident2var.find(midcode.z)->second.func;
                 int addr = ident2var.find(midcode.z)->second.address;
                 if (funcBelong.empty()) {
-                    mipsCodeTable.emplace_back(mips_li, "$t3", "", "", addr);
-                    mipsCodeTable.emplace_back(mips_add, "$t4", "$t3", "$gp");
+                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr);
+                    mipsCodeTable.emplace_back(mips_add, "$t1", "$t1", "$gp");
                     //绝对地址
-                    mipsCodeTable.emplace_back(mips_add, "$t5", "$t2", "$t4");
+                    mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");
                 }
                 else {
-                    mipsCodeTable.emplace_back(mips_li, "$t3", "", "", addr + 8);
-                    mipsCodeTable.emplace_back(mips_add, "$t4", "$fp", "$t3");
+                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
+                    mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
                     if ( ident2var.find(midcode.z)->second.dim[0] == 0) {
-                        mipsCodeTable.emplace_back(mips_lw, "$t5", "$t4", "", 0);
-                        mipsCodeTable.emplace_back(mips_move, "$t4", "$t5", "", 0);
+                        mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
                     }
                     //绝对地址
-                    mipsCodeTable.emplace_back(mips_add, "$t5", "$t4", "$t2");
+                    mipsCodeTable.emplace_back(mips_add, "$t2", "$t1", "$t0");
                 }
 
-                getVar(midcode.y, "$t6");
-                mipsCodeTable.emplace_back(mips_sw, "$t6", "$t5", "", 0);
+                getVar(midcode.y, "$t1");
+                mipsCodeTable.emplace_back(mips_sw, "$t1", "$t2", "", 0);
                 break;
             }
             case EXIT: {
