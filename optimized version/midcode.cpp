@@ -282,7 +282,7 @@ void outputMidCode(ofstream& midCodefile) {
                 midCodefile << "EXIT\n";
                 break;
 
-            case SW:
+            case SAVE:
                 midCodefile << mc.z << " save to " << mc.x << "in memory" << endl;
                 break;
 

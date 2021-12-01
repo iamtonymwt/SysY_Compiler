@@ -39,9 +39,9 @@ int main() {
         Gprocess();    //递归下降，生成midcode
     }
 
-//    outputMidCode(midCodefile_origin);
-//    genMipsCode();
-//    outputMipsCode(mipsCodefile_origin);
+    outputMidCode(midCodefile_origin);
+    genMipsCode();
+    outputMipsCode(mipsCodefile_origin);
 
     optimize();
 

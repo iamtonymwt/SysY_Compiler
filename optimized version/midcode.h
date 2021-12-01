@@ -50,7 +50,7 @@ enum operation {
     PUTARRAY,  //给数组赋值  z:ident x:offset y:ident
     EXIT,  //退出 main最后
 
-    SW, //寄存器sw z:reg_ident x:ins_ident
+    SAVE, //寄存器sw z:reg_ident x:ins_ident
 };
 
 class midCode {  //z = x op y
