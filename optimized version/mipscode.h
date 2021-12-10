@@ -21,6 +21,8 @@ enum mipsOperation {
     mips_mfhi,   //余数
 
     mips_slt,    //slt $s1, $s2, $s3
+    mips_seq,    //seq $s1, $s2, $s3
+    mips_sne,    //sne $s1, $s2, $s3
     mips_beq,    //beq $s1, $s2, label
     mips_bne,    //bne $s1, $s2, label
     mips_j,      //j Loop_End

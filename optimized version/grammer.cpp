@@ -849,17 +849,10 @@ string UnaryOp() {
 // 将实参 传值/传指针
 // Params: ident函数名, dim第几个, neoVar实参名
 void funcParamPush(string ident, int dim, string neoVar) {
-    Function function;
-    for (int i = funcvMap.size()-1; i >= 0; i--) {
-        if (funcvMap[i].ident == ident) {
-            function = funcvMap[i];
-        }
-    }
     string offset = isContainOffset(neoVar);
     //传值
     if (offset.size() == 0) {
         midCodeTable.emplace_back(PUSH, neoVar, to_string(dim));
-//        midCodeTable.emplace_back(ASSIGNOP, function.params[dim].fName, neoVar);
     }
     //传地址
     else {
@@ -870,15 +863,17 @@ void funcParamPush(string ident, int dim, string neoVar) {
 //函数实参表 FuncRParams → Exp { ',' Exp }
 bool FuncRParams(string ident) {
     string neoVar;
-    int dim = 0;
+    vector<string> params;
     neoVar = Exp();
-    funcParamPush(ident, dim, neoVar);
+    params.push_back(neoVar);
     while (symbol == COMMA) {
 //        print();
-        dim += 1;
         getsymNP();
         neoVar = Exp();
-        funcParamPush(ident, dim, neoVar);
+        params.push_back(neoVar);
+    }
+    for (int i = 0; i < params.size(); i++) {
+        funcParamPush(ident, i, params[i]);
     }
 //    outputFile << "<FuncRParams>" << endl;
     return true;

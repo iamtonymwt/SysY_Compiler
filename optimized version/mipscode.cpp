@@ -18,17 +18,21 @@ vector<mipsCode> mipsCodeTable;
 map<string, Variable> ident2var;  // 变量名 函数名（是否全局） 地址
 extern int vAddress;
 
-int paraCount = 0; //函数参数个数
-
+//$a1,$a2,$a3寄存器传参
+int paraCount = 0; //push到第几个了
+bool isPara2Mem = false; // 平时false 写回时true call变false
+string paraReg[3] = {"$a1", "$a2", "$a3"};
+string paraRegVar[3] = {"", "", ""};
+///
 
 /*
  *  $gp不变，存储全局变量,从低到高
  *  $sp函数尾,$fp函数头 运行栈（从低到高）：栈长、返回绝对地址、参数、局部变量
- *  $s1函数参数栈顶
  *  $ra函数ret
+ *  $a1, $a2, $a3 函数传参用
  *  $t0, $t1, $t2 运算用
  *  $t3, $t4, $t5 ins_Var 中间变量使用
- *  $t6,$t7,$t8,$t9,$s2,$s3,$s4,$s5,$s6,$s7 var_Var 跨基本块变量使用
+ *  $t6,$t7,$t8,$t9,$s1,$s2,$s3,$s4,$s5,$s6,$s7 var_Var 跨基本块变量使用
  *  $a0, $v0 与 syscall使用
  *  $s0 函数返回值
  *  hi, lo
@@ -72,6 +76,15 @@ string getVar(string varIdent, int lorR) {
         return varIdent;
     }
     else {
+        //paraReg
+        if (!isPara2Mem) {
+            for(int i = 0; i < 3; i++) {
+                if (paraRegVar[i] == varIdent) {
+                    return paraReg[i];
+                }
+            }
+        }
+
         string funcBelong = ident2var.find(varIdent)->second.func;
         int addr = ident2var.find(varIdent)->second.address;
         //global
@@ -104,6 +117,16 @@ void pushVar(string src, string varIdent) {
         mipsCodeTable.emplace_back(mips_move, varIdent, src);
         return;
     }
+    //paraReg
+    if (!isPara2Mem) {
+        for(int i = 0; i < 3; i++) {
+            if (paraRegVar[i] == varIdent) {
+                mipsCodeTable.emplace_back(mips_move, paraReg[i], src);
+                return;
+            }
+        }
+    }
+
     string funcBelong = ident2var.find(varIdent)->second.func;
     int addr = ident2var.find(varIdent)->second.address;
     //global
@@ -115,7 +138,7 @@ void pushVar(string src, string varIdent) {
         mipsCodeTable.emplace_back(mips_sw, src, "$fp", "", addr + 8);
     }
 }
-//初始化$sp,$fp,$s1
+//初始化$sp,$fp
 void funcStackInit() {
     for (int i = funcvMap.size()-1; i >= 0; i--) {
         if (funcvMap[i].ident == "main") {
@@ -125,7 +148,7 @@ void funcStackInit() {
             break;
         }
     }
-    mipsCodeTable.emplace_back(mips_li, "$s1", "", "", 0x10040000);
+//    mipsCodeTable.emplace_back(mips_li, "$s1", "", "", 0x10040000);
 }
 
 void genMipsCode() {
@@ -286,26 +309,28 @@ void genMipsCode() {
                 break;
             }
             case NEQOP: {
-                string label = getInsLabel();
+//                string label = getInsLabel();
                 string string1 = getVar(midcode.x, 1);
                 string string2 = getVar(midcode.y, 2);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
-                mipsCodeTable.emplace_back(mips_beq, string1, string2, label);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
-                mipsCodeTable.emplace_back(mips_label, label);
+//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
+//                mipsCodeTable.emplace_back(mips_beq, string1, string2, label);
+//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
+//                mipsCodeTable.emplace_back(mips_label, label);
+                mipsCodeTable.emplace_back(mips_sne, "$t0", string1, string2);
                 pushVar("$t0", midcode.z);
                 break;
             }
             case NOTOP: {
-                string label1 = getInsLabel();
-                string label2 = getInsLabel();
+//                string label1 = getInsLabel();
+//                string label2 = getInsLabel();
                 string string1 = getVar(midcode.x, 1);
-                mipsCodeTable.emplace_back(mips_beq, string1, "$zero", label1);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
-                mipsCodeTable.emplace_back(mips_j, label2);
-                mipsCodeTable.emplace_back(mips_label, label1);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
-                mipsCodeTable.emplace_back(mips_label, label2);
+//                mipsCodeTable.emplace_back(mips_beq, string1, "$zero", label1);
+//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
+//                mipsCodeTable.emplace_back(mips_j, label2);
+//                mipsCodeTable.emplace_back(mips_label, label1);
+//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
+//                mipsCodeTable.emplace_back(mips_label, label2);
+                mipsCodeTable.emplace_back(mips_seq, "$t0", string1, "$zero");
                 pushVar("$t0", midcode.z);
                 break;
             }
@@ -334,12 +359,54 @@ void genMipsCode() {
                 break;
             }
             case PUSH: {
+                //paraReg
+                if (!isPara2Mem) {
+                    isPara2Mem = true;
+                    for(int i = 0; i < 3; i++) {
+                        if (paraRegVar[i] != "") {
+                            pushVar(paraReg[i], paraRegVar[i]);
+                        }
+                    }
+                }
+
                 string string1 = getVar(midcode.z, 1);
-                mipsCodeTable.emplace_back(mips_sw, string1, "$s1", "", 0);
-                mipsCodeTable.emplace_back(mips_addi, "$s1", "$s1", "", 4);
+                //paraReg
+                if (paraCount < 3) {
+                    paraCount += 1;
+                    string reg = "$a" + to_string(paraCount);
+                    mipsCodeTable.emplace_back(mips_move, reg, string1);
+                    break;
+                }
+
+//                mipsCodeTable.emplace_back(mips_sw, string1, "$s1", "", 0);
+//                mipsCodeTable.emplace_back(mips_addi, "$s1", "$s1", "", 4);
+                string funcIdent;
+                for (int i = index; i < midCodeTable.size(); i++) {
+                    if (midCodeTable[i].op == CALL) {
+                        funcIdent = midCodeTable[i].z;
+                        break;
+                    }
+                }
+                int nextFuncLength  = 0;
+                for (int i = 0; i < funcvMap.size(); i++) {
+                    if (funcvMap[i].ident == funcIdent) {
+                        nextFuncLength = funcvMap[i].length;
+                    }
+                }
+                mipsCodeTable.emplace_back(mips_sw, string1, "$fp", "", -1*nextFuncLength + 8 + 4 * stoi(midcode.x));
                 break;
             }
             case PUSHADDR: {
+                //paraReg
+                if (!isPara2Mem) {
+                    isPara2Mem = true;
+                    for(int i = 0; i < 3; i++) {
+                        if (paraRegVar[i] != "") {
+                            pushVar(paraReg[i], paraRegVar[i]);
+                        }
+                    }
+                }
+
                 //offset
                 string offset = midcode.x; //[]
                 string string1 = getVar(offset, 1);
@@ -365,11 +432,45 @@ void genMipsCode() {
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
 
-                mipsCodeTable.emplace_back(mips_sw, "$t2", "$s1", "", 0);
-                mipsCodeTable.emplace_back(mips_addi, "$s1", "$s1", "", 4);
+//                mipsCodeTable.emplace_back(mips_sw, "$t2", "$s1", "", 0);
+//                mipsCodeTable.emplace_back(mips_addi, "$s1", "$s1", "", 4);
+
+                //paraReg
+                if (paraCount < 3) {
+                    paraCount += 1;
+                    string reg = "$a" + to_string(paraCount);
+                    mipsCodeTable.emplace_back(mips_move, reg, "$t2");
+                    break;
+                }
+
+                string funcIdent;
+                for (int i = index; i < midCodeTable.size(); i++) {
+                    if (midCodeTable[i].op == CALL) {
+                        funcIdent = midCodeTable[i].z;
+                        break;
+                    }
+                }
+                int nextFuncLength  = 0;
+                for (int i = 0; i < funcvMap.size(); i++) {
+                    if (funcvMap[i].ident == funcIdent) {
+                        nextFuncLength = funcvMap[i].length;
+                    }
+                }
+                mipsCodeTable.emplace_back(mips_sw, "$t2", "$fp", "", -1*nextFuncLength + 8 + 4 * stoi(midcode.y));
                 break;
             }
             case CALL: {
+                //paraReg
+                if (!isPara2Mem) {
+                    isPara2Mem = true;
+                    for(int i = 0; i < 3; i++) {
+                        if (paraRegVar[i] != "") {
+                            pushVar(paraReg[i], paraRegVar[i]);
+                        }
+                    }
+                }
+                paraCount = 0;
+
                 int nextFuncLength  = 0;
                 for (int i = 0; i < funcvMap.size(); i++) {
                     if (funcvMap[i].ident == midcode.z) {
@@ -386,6 +487,16 @@ void genMipsCode() {
                 mipsCodeTable.emplace_back(mips_move, "$fp", "$sp");
                 mipsCodeTable.emplace_back(mips_add, "$sp", "$sp", "$t0");
                 mipsCodeTable.emplace_back(mips_lw, "$ra", "$fp", "", 4);
+
+                //paraReg
+                for(int i = 0; i < 3; i++) {
+                    if (paraRegVar[i] != "") {
+                        int addr = ident2var.find(paraRegVar[i])->second.address;
+                        mipsCodeTable.emplace_back(mips_lw, paraReg[i], "$fp", "", addr + 8);
+                    }
+                }
+                isPara2Mem = false;
+
                 break;
             }
             case RET: {
@@ -440,6 +551,11 @@ void genMipsCode() {
 //                break;
 //            }
             case FUNC: {
+                //clear paraRegVar
+                for (int i = 0; i < 3; i++) {
+                    paraRegVar[i] = "";
+                }
+
                 if (midcode.x == funcvMap[0].ident) {
                     mipsCodeTable.emplace_back(mips_j, "main");
                 }
@@ -447,15 +563,22 @@ void genMipsCode() {
                 break;
             }
             case PARAM: {
-                paraCount += 1;
-                if (midCodeTable[index + 1].op != PARAM) {
-                    for (int i = paraCount; i > 0; i--) {
-                        mipsCodeTable.emplace_back(mips_subi, "$s1", "$s1", "", 4);
-                        mipsCodeTable.emplace_back(mips_lw, "$t0", "$s1", "", 0);
-                        mipsCodeTable.emplace_back(mips_sw, "$t0", "$fp", "", 4*i + 4);
+                //add paraRegVar
+                for (int i = 0; i < 3; i++) {
+                    if (paraRegVar[i] == "") {
+                        paraRegVar[i] = midcode.z;
+                        break;
                     }
-                    paraCount = 0;
                 }
+//                paraCount += 1;
+//                if (midCodeTable[index + 1].op != PARAM) {
+//                    for (int i = paraCount; i > 0; i--) {
+//                        mipsCodeTable.emplace_back(mips_subi, "$s1", "$s1", "", 4);
+//                        mipsCodeTable.emplace_back(mips_lw, "$t0", "$s1", "", 0);
+//                        mipsCodeTable.emplace_back(mips_sw, "$t0", "$fp", "", 4*i + 4);
+//                    }
+//                    paraCount = 0;
+//                }
                 break;
             }
             case GETARRAY: {
@@ -475,11 +598,22 @@ void genMipsCode() {
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
                 else {
-                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
-                    mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
-                    //绝对地址
-                    if ( ident2var.find(midcode.x)->second.dim[0] == 0) {
-                        mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
+                    //paraReg
+                    bool insFlag = false;
+                    for(int i = 0; i < 3; i++) {
+                        if (paraRegVar[i] == midcode.x) {
+                            insFlag = true;
+                            mipsCodeTable.emplace_back(mips_move, "$t1", paraReg[i]);
+                            break;
+                        }
+                    }
+                    if (!insFlag) {
+                        mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
+                        mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
+                        //绝对地址
+                        if ( ident2var.find(midcode.x)->second.dim[0] == 0) {
+                            mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
+                        }
                     }
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t1", "$t0");//绝对地址
                 }
@@ -504,11 +638,23 @@ void genMipsCode() {
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");
                 }
                 else {
-                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
-                    mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
-                    if ( ident2var.find(midcode.z)->second.dim[0] == 0) {
-                        mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
+                    //paraReg
+                    bool insFlag = false;
+                    for(int i = 0; i < 3; i++) {
+                        if (paraRegVar[i] == midcode.z) {
+                            insFlag = true;
+                            mipsCodeTable.emplace_back(mips_move, "$t1", paraReg[i]);
+                            break;
+                        }
                     }
+                    if (!insFlag) {
+                        mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
+                        mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
+                        if ( ident2var.find(midcode.z)->second.dim[0] == 0) {
+                            mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
+                        }
+                    }
+
                     //绝对地址
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t1", "$t0");
                 }
@@ -589,6 +735,12 @@ void outputMipsCode(ofstream& mipsCodefile) {
                 break;
             case mips_slt:
                 mipsCodefile << "slt " << mc.z << "," << mc.x << "," << mc.y << "\n";
+                break;
+            case mips_seq:
+                mipsCodefile << "seq " << mc.z << "," << mc.x << "," << mc.y << "\n";
+                break;
+            case mips_sne:
+                mipsCodefile << "sne " << mc.z << "," << mc.x << "," << mc.y << "\n";
                 break;
             case mips_beq:
                 mipsCodefile << "beq " << mc.z << "," << mc.x << "," << mc.y << "\n";
