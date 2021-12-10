@@ -27,7 +27,7 @@ enum operation {
     GOTO,  //无条件跳转 z
     BZ,    //为0跳转 z x
     BNZ,   //为1跳转 z x
-    LABEL, //标号 z
+    LABEL, //标号 z, x:while
 
     PUSH,  //函数调用时值传递 z:ident x:dim
     PUSHADDR, //函数调用时地址传递 z:ident x:offset y:要传到第几个
@@ -51,6 +51,7 @@ enum operation {
     EXIT,  //退出 main最后
 
     SAVE, //寄存器sw z:reg_ident x:ins_ident
+    LOAD, //寄存器lw z:reg_ident x:var_ident
 };
 
 class midCode {  //z = x op y
@@ -69,7 +70,7 @@ bool isNumber(string item);
 string merge(operation o, string left, string right);
 
 void outputMidCode(ofstream& midCodefile);
-
+string showMidCode(midCode mc);
 string getString();
 string getLabel();
 

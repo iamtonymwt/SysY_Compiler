@@ -37,7 +37,9 @@ enum mipsOperation {
     mips_dataSeg,  //.data
     mips_asciizSeg, //.asciiz
     mips_textSeg,  //.text
-    mips_label,  //产生标号
+    mips_label,  //产生标号\
+
+    mips_note, //注释（中间代码）
 };
 
 class mipsCode {

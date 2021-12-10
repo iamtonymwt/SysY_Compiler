@@ -283,11 +283,139 @@ void outputMidCode(ofstream& midCodefile) {
                 break;
 
             case SAVE:
-                midCodefile << mc.z << " save to " << mc.x << "in memory" << endl;
+                midCodefile << mc.z << " save to " << mc.x << " in memory" << endl;
+                break;
+            case LOAD:
+                midCodefile << "LOAD " << mc.x << " from memory to " << mc.z << endl;
                 break;
 
             default:
                 break;
         }
     }
+}
+
+string showMidCode(midCode mc) {
+    string showContent;
+    switch (mc.op) {
+        case PLUSOP:
+            showContent = mc.z + " = " + mc.x + " + " + mc.y;
+            break;
+        case MINUOP:
+            showContent = mc.z + " = " + mc.x + " - " + mc.y;
+            break;
+        case MULTOP:
+            showContent = mc.z + " = " + mc.x + " * " + mc.y;
+            break;
+        case DIVOP:
+            showContent = mc.z + " = " + mc.x + " / " + mc.y;
+            break;
+        case MODOP:
+            showContent = mc.z + " = " + mc.x + " % " + mc.y;
+            break;
+        case ANDOP:
+            showContent = mc.z + " = " + mc.x + " && " + mc.y;
+            break;
+        case OROP:
+            showContent = mc.z + " = " + mc.x + " || " + mc.y;
+            break;
+        case LSSOP:
+            showContent = mc.z + " = (" + mc.x + " < " + mc.y + ")";
+            break;
+        case LEQOP:
+            showContent = mc.z + " = (" + mc.x + " <= " + mc.y + ")";
+            break;
+        case GREOP:
+            showContent = mc.z + " = (" + mc.x + " > " + mc.y + ")";
+            break;
+        case GEQOP:
+            showContent = mc.z + " = (" + mc.x + " >= " + mc.y + ")";
+            break;
+        case EQLOP:
+            showContent = mc.z + " = (" + mc.x + " == " + mc.y + ")";
+            break;
+        case NEQOP:
+            showContent = mc.z + " = (" + mc.x + " != " + mc.y + ")";
+            break;
+        case NOTOP:
+            showContent = mc.z + " = !" + mc.x;
+            break;
+        case ASSIGNOP:
+            showContent = mc.z + " = " + mc.x;
+            break;
+        case GOTO:
+            showContent = "GOTO " + mc.z;
+            break;
+        case BZ:
+            showContent = "BZ " + mc.z + "(" + mc.x + " == 0)";
+            break;
+        case BNZ:
+            showContent = "BNZ " + mc.z + "(" + mc.x + " == 1)";
+            break;
+        case LABEL:
+            showContent = "LABEL: " + mc.z;
+            break;
+        case PUSH:
+            showContent = "PUSH " + mc.z;
+            break;
+        case PUSHADDR:
+            showContent = "PUSHADDR " + mc.z + "[" + mc.x + "]";
+            break;
+        case CALL:
+            showContent = "CALL " + mc.z;
+            break;
+        case RET:
+            showContent = "RET " + mc.z;
+            break;
+        case RETVALUE:
+            showContent = "RETVALUE " + mc.z + " = " + mc.x;
+            break;
+        case SCAN:
+            showContent = "SCAN " + mc.z;
+            break;
+        case PRINTD:
+            showContent = "PRINTD " + mc.z;
+            break;
+        case PRINTS:
+            showContent = "PRINTS " + mc.z + " \"" + mc.x + "\" ";
+            break;
+        case CONST:
+            showContent = "CONST INT " + mc.z;
+            break;
+        case CONSTARRAY:
+            showContent = "CONST INT ARRAY " + mc.z;
+            break;
+        case ARRAY:
+            showContent = "INT ARRAY " + mc.z;
+            break;
+        case VAR:
+            showContent = "INT " + mc.z;
+            break;
+        case FUNC:
+            showContent = "FUNC " + mc.z + " " + mc.x + "()";
+            break;
+        case PARAM:
+            showContent = "PARAM " + mc.z;
+            break;
+        case GETARRAY:
+            showContent = mc.z + " = " + mc.x + "[" + mc.y + "]";
+            break;
+        case PUTARRAY:
+            showContent = mc.z + "[" + mc.x + "]" + " = " + mc.y;
+            break;
+        case EXIT:
+            showContent = "EXIT";
+            break;
+
+        case SAVE:
+            showContent = mc.z + " save to " + mc.x + " in memory";
+            break;
+        case LOAD:
+            showContent = "LOAD " + mc.x + " from memory to " + mc.z;
+            break;
+
+        default:
+            break;
+    }
+    return showContent;
 }

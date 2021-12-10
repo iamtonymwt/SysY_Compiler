@@ -28,6 +28,7 @@ int paraCount = 0; //函数参数个数
  *  $ra函数ret
  *  $t0, $t1, $t2 运算用
  *  $t3, $t4, $t5 ins_Var 中间变量使用
+ *  $t6,$t7,$t8,$t9,$s2,$s3,$s4,$s5,$s6,$s7 var_Var 跨基本块变量使用
  *  $a0, $v0 与 syscall使用
  *  $s0 函数返回值
  *  hi, lo
@@ -140,6 +141,7 @@ void genMipsCode() {
     funcStackInit();
     for (int index = 0; index < midCodeTable.size(); index ++) {
         midCode midcode = midCodeTable[index];
+        mipsCodeTable.emplace_back(mips_note, showMidCode(midcode));
         switch (midcode.op) {
             case PLUSOP: {
                 if (isNumber(midcode.x)) {
@@ -522,6 +524,22 @@ void genMipsCode() {
             }
             case SAVE: {
                 pushVar(midcode.z, midcode.x);
+                break;
+            }
+            case LOAD: {
+                string varIdent = midcode.x;
+                string regIdent = midcode.z;
+                string funcBelong = ident2var.find(varIdent)->second.func;
+                int addr = ident2var.find(varIdent)->second.address;
+                //global
+                if (funcBelong.empty()) {
+                    mipsCodeTable.emplace_back(mips_lw, regIdent, "$gp", "", addr);
+                }
+                //local
+                else {
+                    mipsCodeTable.emplace_back(mips_lw, regIdent, "$fp", "", addr + 8);
+                }
+                break;
             }
             default:break;
         }
@@ -616,6 +634,9 @@ void outputMipsCode(ofstream& mipsCodefile) {
                 break;
             case mips_label:
                 mipsCodefile << mc.z << ":\n";
+                break;
+            case mips_note:
+                mipsCodefile << "# " << mc.z << "\n";
                 break;
             default:
                 break;

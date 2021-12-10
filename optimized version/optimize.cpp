@@ -22,6 +22,12 @@ string insReg[3] = {"$t3", "$t4", "$t5"};
 bool insRegUse[3] = {false, false, false};
 string insRegVar[3] = {"", "", ""};
 
+//全局寄存器
+string globalReg[10] = {"$t6","$t7","$t8","$t9","$s2","$s3","$s4","$s5","$s6","$s7"};
+bool globalRegUse[10] = {false, false, false, false, false, false, false, false, false, false};
+string globalRegVar[10] = {"","","","","","","","","",""};
+int isInLoop = 0;
+
 //找出全局变量
 void initGlobalVar() {
     for (int i = 0; i < vTable.size(); i++) {
@@ -33,6 +39,12 @@ void initGlobalVar() {
 
 bool isInsVar(string ident) {
     if (ident[0] == 'i') {
+        return true;
+    }
+    return false;
+}
+bool isGlobalVar(string ident) {
+    if (ident[0] == 'v') {
         return true;
     }
     return false;
@@ -595,6 +607,256 @@ void changeIns2Reg() {
     }
 }
 
+//查找空全局变量寄存器
+//返回序号，-1无
+int findAvaGlobalReg() {
+    for (int i=0; i<10; i++){
+        if (!globalRegUse[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+//查看global_var 是否已经分配了Reg
+//RVal
+string putGlobal(string ident, vector<midCode>& load){
+    //不是variable
+    if (!isGlobalVar(ident)) {
+        return ident;
+    }
+    int index = -1;
+    for (int i = 0; i < 10; i++) {
+        if (globalRegVar[i] == ident) {
+            index = i;
+        }
+    }
+    //分配了寄存器
+    if (index != -1) {
+        return globalReg[index];
+    }
+    //未分配寄存器
+    index = findAvaGlobalReg();
+    //可以分配
+    if (index != -1){
+        globalRegUse[index] = true;
+        globalRegVar[index] = ident;
+        load.emplace_back(LOAD, globalReg[index], ident);
+        return globalReg[index];
+    }
+    //不可分配
+    else {
+        return ident;
+    }
+}
+//查看global_var 是否已经分配了Reg
+//LVal
+string getGlobal(string ident){
+    if (!isGlobalVar(ident)) {
+        return ident;
+    }
+    int index = -1;
+    for (int i = 0; i < 10; i++) {
+        if (globalRegVar[i] == ident) {
+            index = i;
+        }
+    }
+    //已分配
+    if (index != -1) {
+        return globalReg[index];
+    }
+    //未分配
+    index = findAvaGlobalReg();
+    //可以分配
+    if (index != -1){
+        globalRegUse[index] = true;
+        globalRegVar[index] = ident;
+        return globalReg[index];
+    }
+    //不可分配
+    else {
+        return ident;
+    }
+}
+//$t6,$t7,$t8,$t9,$s2,$s3,$s4,$s5,$s6,$s7 全局变量使用
+void changeGlobal2Reg() {
+    int i;
+    if (blocks[0].midCodeVector[0].op == FUNC) {
+        i = 0;
+    }
+    else {
+        i = 1;
+    }
+    for (; i < blocks.size(); i++) {
+        Block& curBlock = blocks[i];
+        if (curBlock.midCodeVector.empty()) {
+            continue;
+        }
+        if (curBlock.midCodeVector[0].op == FUNC) {
+            for (int k = 0; k < 10; k++) {
+                globalRegUse[k] = false;
+                globalRegVar[k] = "";
+            }
+        }
+        vector<midCode> loadMidCodes;
+        for (int j = 0; j < curBlock.midCodeVector.size(); j++) {
+            switch (curBlock.midCodeVector[j].op) {
+                //put z get x y
+                case PLUSOP:
+                case MINUOP:
+                case MULTOP:
+                case DIVOP:
+                case MODOP:
+                case ANDOP:
+                case OROP:
+                case LSSOP:
+                case LEQOP:
+                case GREOP:
+                case GEQOP:
+                case EQLOP:
+                case NEQOP:
+                {
+                    curBlock.midCodeVector[j].x = putGlobal(curBlock.midCodeVector[j].x, loadMidCodes);
+                    curBlock.midCodeVector[j].y = putGlobal(curBlock.midCodeVector[j].y, loadMidCodes);
+                    curBlock.midCodeVector[j].z = getGlobal(curBlock.midCodeVector[j].z);
+                    break;
+                }
+                case GETARRAY:
+                {
+                    curBlock.midCodeVector[j].y = putGlobal(curBlock.midCodeVector[j].y, loadMidCodes);
+                    curBlock.midCodeVector[j].z = getGlobal(curBlock.midCodeVector[j].z);
+                    break;
+                }
+                case PUTARRAY:
+                {
+                    curBlock.midCodeVector[j].x = putGlobal(curBlock.midCodeVector[j].x, loadMidCodes);
+                    curBlock.midCodeVector[j].y = putGlobal(curBlock.midCodeVector[j].y, loadMidCodes);
+                    break;
+                }
+                    //put z get x
+                case NOTOP:
+                case ASSIGNOP:{
+                    curBlock.midCodeVector[j].x = putGlobal(curBlock.midCodeVector[j].x, loadMidCodes);
+                    curBlock.midCodeVector[j].z = getGlobal(curBlock.midCodeVector[j].z);
+                    break;
+                }
+                    //get x
+                case BZ:
+                case BNZ:{
+                    curBlock.midCodeVector[j].x = putGlobal(curBlock.midCodeVector[j].x, loadMidCodes);
+                    break;
+                }
+                    //get z
+                case PUSH:
+                case RET:
+                case PRINTD:{
+                    curBlock.midCodeVector[j].z = putGlobal(curBlock.midCodeVector[j].z, loadMidCodes);
+                    break;
+                }
+                    //get x
+                case PUSHADDR:{
+                    curBlock.midCodeVector[j].x = putGlobal(curBlock.midCodeVector[j].x, loadMidCodes);
+                    break;
+                }
+                    //put z
+                case RETVALUE:
+                case SCAN:{
+                    curBlock.midCodeVector[j].z = getGlobal(curBlock.midCodeVector[j].z);
+                    break;
+                }
+                case LABEL:{
+                    if (curBlock.midCodeVector[j].x == "loop_begin") {
+                        isInLoop += 1;
+                    }
+                    else if(curBlock.midCodeVector[j].x == "loop_end") {
+                        isInLoop -= 1;
+                    }
+                }
+                default:
+                    break;
+            }
+        }
+
+
+        //寄存器回写
+        midCode lastMidCode = curBlock.midCodeVector[curBlock.midCodeVector.size()-1];
+        curBlock.midCodeVector.pop_back();
+        //函数调用写回，不回收
+        if (lastMidCode.op == CALL) {
+            for (int k = 0; k < 10; k++) {
+                if (globalRegUse[k]) {
+//                    globalRegUse[k] = false;
+                    curBlock.midCodeVector.emplace_back(SAVE, globalReg[k], globalRegVar[k]);
+//                    globalRegVar[k] = "";
+                }
+            }
+            curBlock.midCodeVector.push_back(lastMidCode);
+            //写回寄存器
+            for (int k = 0; k < 10; k++) {
+                if (globalRegUse[k]) {
+//                    globalRegUse[k] = false;
+                    curBlock.midCodeVector.emplace_back(LOAD, globalReg[k], globalRegVar[k]);
+//                    globalRegVar[k] = "";
+                }
+            }
+        }
+        else if (lastMidCode.op == RET) {
+            for (int k = 0; k < 10; k++) {
+                if (globalRegUse[k]) {
+//                    globalRegUse[k] = false;
+                    curBlock.midCodeVector.emplace_back(SAVE, globalReg[k], globalRegVar[k]);
+//                    globalRegVar[k] = "";
+                }
+            }
+            curBlock.midCodeVector.push_back(lastMidCode);
+        }
+        //在loop内 回跳的时候回写，不释放寄存器
+        else if (isInLoop != 0) {
+            if (curBlock.nextBlock1 <= curBlock.number && curBlock.nextBlock1 != -1
+                || curBlock.nextBlock2 <= curBlock.number && curBlock.nextBlock2 != -1) {
+                for (int k = 0; k < 10; k++) {
+                    if (!globalRegUse[k]) {
+                        continue;
+                    } else {
+                        curBlock.midCodeVector.emplace_back(SAVE, globalReg[k], globalRegVar[k]);
+                    }
+                }
+            }
+            curBlock.midCodeVector.push_back(lastMidCode);
+        }
+        //根据out集来写回 在loop外
+        else {
+            for (int k = 0; k < 10; k++) {
+                if (!globalRegUse[k]) {
+                    continue;
+                }
+                if (curBlock.out.find(globalRegVar[k]) == curBlock.out.end()) {
+                    curBlock.midCodeVector.emplace_back(SAVE, globalReg[k], globalRegVar[k]);
+                    globalRegVar[k] = "";
+                    globalRegUse[k] = false;
+                }
+            }
+            curBlock.midCodeVector.push_back(lastMidCode);
+        }
+
+
+        //首端的load集
+        if (curBlock.midCodeVector[0].op == FUNC) {
+            auto iter = curBlock.midCodeVector.begin()+1;
+            while(iter->op == PARAM) {
+                iter ++;
+            }
+            curBlock.midCodeVector.insert(iter,loadMidCodes.begin(),loadMidCodes.end());
+
+        }
+        else if (curBlock.midCodeVector[0].op == LABEL) {
+            curBlock.midCodeVector.insert(curBlock.midCodeVector.begin()+1,loadMidCodes.begin(),loadMidCodes.end());
+        }
+        else {
+            curBlock.midCodeVector.insert(curBlock.midCodeVector.begin(),loadMidCodes.begin(),loadMidCodes.end());
+        }
+    }
+}
+
 //更新midCodeTable
 void refreshMidCodeTable(){
     midCodeTable.clear();
@@ -617,4 +879,6 @@ void optimize() {
     delDeadCode(); //删除死代码
     changeIns2Reg(); //中间变量Reg分配
     refreshMidCodeTable(); //block.midcode -> midcodeTable
+//    changeGlobal2Reg(); //全局变量Reg分配
+//    refreshMidCodeTable(); //block.midcode -> midcodeTable
 }

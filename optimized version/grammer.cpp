@@ -444,7 +444,7 @@ bool Stmt() {
 //            print();
             string loop_begin = getLabel();
             string loop_end = getLabel();
-            midCodeTable.emplace_back(LABEL, loop_begin);
+            midCodeTable.emplace_back(LABEL, loop_begin, "loop_begin");
             whileLabel.emplace_back(make_pair(loop_begin, loop_end));
             getsymP();
             getsymNP();
@@ -455,7 +455,7 @@ bool Stmt() {
             Stmt();
             whileLabel.pop_back();
             midCodeTable.emplace_back(GOTO, loop_begin);
-            midCodeTable.emplace_back(LABEL, loop_end);
+            midCodeTable.emplace_back(LABEL, loop_end, "loop_end");
             break;
         }
 
