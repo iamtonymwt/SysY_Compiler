@@ -101,7 +101,7 @@ string RelExp();
 string EqExp();
 
 //逻辑与表达式 LAndExp → EqExp | LAndExp '&&' EqExp // 1.EqExp 2.&& 均需覆盖
-string LAndExp(string andEndLabel);
+bool LAndExp(string andEndLabel);
 
 //逻辑或表达式 LOrExp → LAndExp | LOrExp '||' LAndExp // 1.LAndExp 2.|| 均需覆盖
 string LOrExp();

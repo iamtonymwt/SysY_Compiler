@@ -968,36 +968,41 @@ string EqExp() {
 }
 
 //逻辑与表达式 LAndExp → EqExp | LAndExp '&&' EqExp // 1.EqExp 2.&& 均需覆盖
-string LAndExp(string andEndLabel) {
+bool LAndExp(string andEndLabel) {
+    bool andFlag = false;
     string eqExp = EqExp();
 //    outputFile << "<LAndExp>" << endl;
     midCodeTable.emplace_back(BZ, andEndLabel, eqExp);
     while (symbol == AND) {
+        andFlag = true;
 //        print();
         getsymNP();
         eqExp = EqExp();
         midCodeTable.emplace_back(BZ, andEndLabel, eqExp);
 //        outputFile << "<LAndExp>" << endl;
     }
-    return "";
+    return andFlag;
 }
 
 //逻辑或表达式 LOrExp → LAndExp | LOrExp '||' LAndExp // 1.LAndExp 2.|| 均需覆盖
 string LOrExp() {
+    bool andFlag = false;
+    bool orFlag = false;
     string neoVar = addNewV(); //此处的neoVar会被使用三次
     string andEndLabel = getLabel();
     string orEndLabel = getLabel();
-    LAndExp(andEndLabel);
+    andFlag = LAndExp(andEndLabel);
     midCodeTable.emplace_back(ASSIGNOP, neoVar, "1");
     midCodeTable.emplace_back(GOTO, orEndLabel);
     midCodeTable.emplace_back(LABEL, andEndLabel);
     midCodeTable.emplace_back(ASSIGNOP, neoVar, "0");
 //    outputFile << "<LOrExp>" << endl;
     while (symbol == OR) {
+        orFlag = true;
 //        print();
         getsymNP();
         andEndLabel = getLabel();
-        LAndExp(andEndLabel);
+        andFlag = LAndExp(andEndLabel) || andFlag;
         midCodeTable.emplace_back(ASSIGNOP, neoVar, "1");
         midCodeTable.emplace_back(GOTO, orEndLabel);
         midCodeTable.emplace_back(LABEL, andEndLabel);
@@ -1005,6 +1010,13 @@ string LOrExp() {
 //        outputFile << "<LOrExp>" << endl;
     }
     midCodeTable.emplace_back(LABEL, orEndLabel);
+    if (!andFlag && !orFlag) {
+        for (int i = 0; i < 5; i++) {
+            midCodeTable.pop_back();
+        }
+        neoVar = midCodeTable[midCodeTable.size()-1].x;
+        midCodeTable.pop_back();
+    }
     return neoVar;
 }
 

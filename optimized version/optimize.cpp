@@ -68,6 +68,30 @@ void digHole() {
             }
         }
 
+        //BZ label_3($t3 == 0)
+        //variable_5 = 1
+        //GOTO label_4
+        //LABEL: label_3
+        //variable_5 = 0
+        //LABEL: label_4
+        //BZ label_1(variable_5 == 0)
+//        if (i < midCodeTable.size()-6) {
+//            if ((midCodeTable[i].op == BZ)
+//                && (midCodeTable[i+1].op == ASSIGNOP)
+//                && (midCodeTable[i+2].op == GOTO)
+//                && (midCodeTable[i+3].op == LABEL)
+//                && (midCodeTable[i+4].op == ASSIGNOP)
+//                && (midCodeTable[i+5].op == LABEL)
+//                && (midCodeTable[i+6].op == BZ)
+//                && (midCodeTable[i+1].z == midCodeTable[i+4].z)
+//                && (midCodeTable[i+4].z == midCodeTable[i+6].x)){
+//                neoMidCodeTable.emplace_back(BZ, midCodeTable[i+6].z, midCodeTable[i].x);
+//                i += 6;
+//                continue;
+//            }
+//        }
+
+
         //default
         neoMidCodeTable.push_back(midCodeTable[i]);
     }
