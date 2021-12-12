@@ -54,6 +54,7 @@ public:
     mipsCode(mipsOperation o, string zz = "", string xx = "", string yy = "", int i = 0) : op(o), z(zz), x(xx), y(yy), imm(i) {}
 };
 
+bool isReg(string ident);
 void genMipsCode();
 void outputMipsCode(ofstream& mipsCodefile);
 

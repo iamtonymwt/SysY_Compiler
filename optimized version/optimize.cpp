@@ -23,10 +23,13 @@ bool insRegUse[3] = {false, false, false};
 string insRegVar[3] = {"", "", ""};
 
 //全局寄存器
-string globalReg[10] = {"$t6","$t7","$t8","$t9","$s2","$s3","$s4","$s5","$s6","$s7"};
-bool globalRegUse[10] = {false, false, false, false, false, false, false, false, false, false};
-string globalRegVar[10] = {"","","","","","","","","",""};
-int isInLoop = 0;
+string globalReg[11] = {"$t6","$t7","$t8","$t9","$s1","$s2","$s3","$s4","$s5","$s6","$s7"};
+//bool globalRegUse[11] = {false, false, false, false, false, false, false, false, false, false, false};
+string globalRegVar[11] = {"","","","","","","","","","",""};
+bool globalRegDirty[11] = {false, false, false, false, false, false, false, false, false, false, false};
+map<string, int> varUseTimes;
+vector<string> funcParams;
+
 
 //找出全局变量
 void initGlobalVar() {
@@ -631,7 +634,326 @@ void changeIns2Reg() {
     }
 }
 
-//查找空全局变量寄存器
+//func：一个变量出现一次
+void varAddTimes(string varIdent) {
+    if (isNumber(varIdent) ||
+        isReg(varIdent) ||
+        isInsVar(varIdent)){
+        return;
+    }
+    //前三个参数不管的
+    for (int i = 0; i < funcParams.size(); i++) {
+        if (i > 2) {
+            break;
+        }
+        if(funcParams[i] == varIdent) {
+            return;
+        }
+    }
+
+    if (varUseTimes.find(varIdent) == varUseTimes.end()) {
+        varUseTimes.insert(make_pair(varIdent, 1));
+    }
+    else {
+        varUseTimes.find(varIdent)->second += 1;
+    }
+}
+//func：变量使用次数
+void calFuncVarTimes(int beginBlock, int endBLock) {
+    varUseTimes.clear();
+    funcParams.clear();
+    //参数
+    int k = 1;
+    while (blocks[beginBlock].midCodeVector[k].op == PARAM) {
+        funcParams.push_back(blocks[beginBlock].midCodeVector[k].z);
+        k++;
+    }
+    for (int i = beginBlock; i <= endBLock; i++) {
+        Block& curBlock = blocks[i];
+        for (int j = 0; j < curBlock.midCodeVector.size(); j++) {
+            midCode curMidCode = curBlock.midCodeVector[j];
+            switch (curMidCode.op) {
+                //put z get x y
+                case PLUSOP:
+                case MINUOP:
+                case MULTOP:
+                case DIVOP:
+                case MODOP:
+                case ANDOP:
+                case OROP:
+                case LSSOP:
+                case LEQOP:
+                case GREOP:
+                case GEQOP:
+                case EQLOP:
+                case NEQOP:
+                {
+                    varAddTimes(curMidCode.x);
+                    varAddTimes(curMidCode.y);
+                    varAddTimes(curMidCode.z);
+                    break;
+                }
+                case GETARRAY:
+                {
+                    varAddTimes(curMidCode.y);
+                    varAddTimes(curMidCode.z);
+                    break;
+                }
+                case PUTARRAY:
+                {
+                    varAddTimes(curMidCode.x);
+                    varAddTimes(curMidCode.y);
+                    break;
+                }
+                    //put z get x
+                case NOTOP:
+                case ASSIGNOP:{
+                    varAddTimes(curMidCode.x);
+                    varAddTimes(curMidCode.z);
+                    break;
+                }
+                    //get x
+                case BZ:
+                case BNZ:{
+                    varAddTimes(curMidCode.x);
+                    break;
+                }
+                    //get z
+                case PUSH:
+                case RET:
+                case PRINTD:{
+                    varAddTimes(curMidCode.z);
+                    break;
+                }
+                    //get z x
+                case PUSHADDR:{
+//                    add2use(curBlock, curMidCode.z);
+                    varAddTimes(curMidCode.x);
+                    break;
+                }
+                    //put z
+                case RETVALUE:
+                case SCAN:{
+                    varAddTimes(curMidCode.z);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+}
+//func：分配全局寄存器
+void disGlobalReg() {
+    int i = 0;
+    while ((i < 11) && (varUseTimes.size() != 0)) {
+        auto maxIter = varUseTimes.begin();
+        auto iter = varUseTimes.begin();
+        while (iter != varUseTimes.end()) {
+            if (iter->second > maxIter->second) {
+                maxIter = iter;
+            }
+            iter ++;
+        }
+        globalRegVar[i] = maxIter->first;
+        varUseTimes.erase(maxIter);
+        i += 1;
+    }
+}
+//func: 找对应的GReg
+string getGReg(bool isDef, string varIdent) {
+    for (int i = 0; i < 11; i++) {
+        if (globalRegVar[i] == varIdent) {
+            if (isDef) {
+                globalRegDirty[i] = true;
+            }
+            return globalReg[i];
+        }
+    }
+    return varIdent;
+}
+//func：改写midcode
+void changeGlobalReg(int beginBlock, int endBLock) {
+    for (int i = beginBlock; i <= endBLock; i++) {
+        Block& curBlock = blocks[i];
+        auto iter = curBlock.midCodeVector.begin();
+        while(iter != curBlock.midCodeVector.end()) {
+            switch (iter->op) {
+                //put z get x y
+                case PLUSOP:
+                case MINUOP:
+                case MULTOP:
+                case DIVOP:
+                case MODOP:
+                case ANDOP:
+                case OROP:
+                case LSSOP:
+                case LEQOP:
+                case GREOP:
+                case GEQOP:
+                case EQLOP:
+                case NEQOP:
+                {
+                    iter->z = getGReg(true, iter->z);
+                    iter->x = getGReg(false, iter->x);
+                    iter->y = getGReg(false, iter->y);
+                    break;
+                }
+                case PUTARRAY:{
+                    iter->x = getGReg(false, iter->x);
+                    iter->y = getGReg(false, iter->y);
+                    break;
+                }
+                case GETARRAY:{
+                    iter->z = getGReg(true, iter->z);
+                    iter->y = getGReg(false, iter->y);
+                    break;
+                }
+                    //put z get x
+                case NOTOP:
+                case ASSIGNOP:{
+                    iter->z = getGReg(true, iter->z);
+                    iter->x = getGReg(false, iter->x);
+                    break;
+                }
+                    //get x
+                case BZ:
+                case BNZ:{
+                    iter->x = getGReg(false, iter->x);
+                    break;
+                }
+                    //get z
+                case PUSH:
+                case PRINTD:{
+                    iter->z = getGReg(false, iter->z);
+                    break;
+                }
+                    //get z x
+                case PUSHADDR:{
+                    iter->x = getGReg(false, iter->x);
+                    break;
+                }
+                    //put z
+                case RETVALUE:
+                case SCAN:{
+                    iter->z = getGReg(true, iter->z);
+                    break;
+                }
+                case FUNC:{
+                    iter ++;
+                    for (int k = 0; k < 11; k++) {
+                        if (!globalRegVar[k].empty()) {
+                            iter = curBlock.midCodeVector.insert(iter, midCode(LOAD, globalReg[k], globalRegVar[k]));
+                            iter ++;
+                        }
+                    }
+                    iter --;
+                    break;
+                }
+                case CALL:{
+                    for (int k = 0; k < 11; k++) {
+                        if (globalRegDirty[k]) {
+                            iter = curBlock.midCodeVector.insert(iter, midCode(SAVE, globalReg[k], globalRegVar[k]));
+                            iter ++;
+                        }
+                    }
+                    iter ++;
+                    for (int k = 0; k < 11; k++) {
+                        if (!globalRegVar[k].empty()) {
+                            iter = curBlock.midCodeVector.insert(iter, midCode(LOAD, globalReg[k], globalRegVar[k]));
+                            iter ++;
+                        }
+                    }
+                    iter --;
+                    break;
+                }
+                case RET:{
+                    iter->z = getGReg(false, iter->z);
+                    for (int k = 0; k < 11; k++) {
+                        if (!globalRegVar[k].empty() && (globalVar.find(globalRegVar[k])!=globalVar.end())) {
+                            iter = curBlock.midCodeVector.insert(iter, midCode(SAVE, globalReg[k], globalRegVar[k]));
+                            iter ++;
+                        }
+                    }
+                    break;
+                }
+                case GOTO: {
+                    if ((curBlock.nextBlock1 != -1 && curBlock.nextBlock1 < curBlock.number) ||
+                        (curBlock.nextBlock2 != -1 && curBlock.nextBlock2 < curBlock.number)) {
+                        for (int k = 0; k < 11; k++) {
+                            if (globalRegDirty[k]) {
+                                iter = curBlock.midCodeVector.insert(iter,midCode(SAVE, globalReg[k], globalRegVar[k]));
+                                iter++;
+                            }
+                        }
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+            iter ++;
+        }
+    }
+}
+//引用计数全局寄存器分配
+void changeGlobal2Reg() {
+    //funcsBeginPlace
+    vector<int> funcsBeginPlace;
+    for(int i = 0; i < blocks.size(); i++) {
+        if (blocks[i].midCodeVector[0].op == FUNC) {
+            funcsBeginPlace.push_back(blocks[i].number);
+        }
+    }
+    funcsBeginPlace.push_back(blocks.size());
+    //分配寄存器
+    for(int i = 0; i < funcsBeginPlace.size() - 1; i++) {
+        int beginBlock = funcsBeginPlace[i];
+        int endBLock = funcsBeginPlace[i+1] - 1;
+        int k = 0;
+        while (k < 11) {
+            globalRegVar[k] = "";
+            globalRegDirty[k] = false;
+            k++;
+        }
+        calFuncVarTimes(beginBlock, endBLock);
+        disGlobalReg();
+        changeGlobalReg(beginBlock, endBLock);
+    }
+}
+
+
+
+
+//更新midCodeTable
+void refreshMidCodeTable(){
+    midCodeTable.clear();
+    for (int i = 0; i < blocks.size(); i++) {
+        for (int j = 0; j < blocks[i].midCodeVector.size(); j++){
+            midCodeTable.push_back(blocks[i].midCodeVector[j]);
+        }
+    }
+}
+
+
+//主优化函数
+void optimize() {
+    initGlobalVar();//全局变量
+    digHole();  //各种窥孔
+    genBlock(); //生成基本块
+    linkBlocks(); //生成流图
+    calUseDef(); //计算块的use和def
+    calInOut(); //计算块的in和out
+    delDeadCode(); //删除死代码
+    changeIns2Reg(); //中间变量Reg分配
+    refreshMidCodeTable(); //block.midcode -> midcodeTable
+    changeGlobal2Reg(); //全局变量Reg分配
+    refreshMidCodeTable(); //block.midcode -> midcodeTable
+}
+
+
+/*useles
+ * //查找空全局变量寄存器
 //返回序号，-1无
 int findAvaGlobalReg() {
     for (int i=0; i<10; i++){
@@ -880,29 +1202,4 @@ void changeGlobal2Reg() {
         }
     }
 }
-
-//更新midCodeTable
-void refreshMidCodeTable(){
-    midCodeTable.clear();
-    for (int i = 0; i < blocks.size(); i++) {
-        for (int j = 0; j < blocks[i].midCodeVector.size(); j++){
-            midCodeTable.push_back(blocks[i].midCodeVector[j]);
-        }
-    }
-}
-
-
-//主优化函数
-void optimize() {
-    initGlobalVar();//全局变量
-    digHole();  //各种窥孔
-    genBlock(); //生成基本块
-    linkBlocks(); //生成流图
-    calUseDef(); //计算块的use和def
-    calInOut(); //计算块的in和out
-    delDeadCode(); //删除死代码
-    changeIns2Reg(); //中间变量Reg分配
-    refreshMidCodeTable(); //block.midcode -> midcodeTable
-//    changeGlobal2Reg(); //全局变量Reg分配
-//    refreshMidCodeTable(); //block.midcode -> midcodeTable
-}
+ */
