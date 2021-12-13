@@ -42,13 +42,11 @@ int main() {
     outputMidCode(midCodefile_origin);
     genMipsCode();
     outputMipsCode(mipsCodefile_origin);
-
-    optimize();
-
+    midcodeOptimize();
     outputMidCode(midCodefile_optimize);  //midcode output
     genMipsCode();      //midcode -> mipscode
+    mipscodeOptimize();
     outputMipsCode(mipsCodefile_optimize);   //mipscode output
-
     outputMipsCode(mipsCodefile);
 
 

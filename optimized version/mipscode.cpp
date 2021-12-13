@@ -409,22 +409,25 @@ void genMipsCode() {
 
                 //offset
                 string offset = midcode.x; //[]
-                string string1 = getVar(offset, 1);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET);
-                mipsCodeTable.emplace_back(mips_mult, "$t0", string1);
-                mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
+                if (!isNumber(offset)) {
+                    string string1 = getVar(offset, 1);
+                    mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET);
+                    mipsCodeTable.emplace_back(mips_mult, "$t0", string1);
+                    mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
+                }
+                else {
+                    mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET * stoi(offset));
+                }
                 //top
                 string funcBelong = ident2var.find(midcode.z)->second.func;
                 int addr = ident2var.find(midcode.z)->second.address;
                 if (funcBelong.empty()) {
-                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr);
-                    mipsCodeTable.emplace_back(mips_add, "$t1", "$t1", "$gp");
+                    mipsCodeTable.emplace_back(mips_addi, "$t1", "$gp", "", addr);
                     //绝对地址
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
                 else {
-                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
-                    mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
+                    mipsCodeTable.emplace_back(mips_addi, "$t1", "$fp", "", addr+8);
                     //绝对地址
                     if ( ident2var.find(midcode.z)->second.dim[0] == 0) {
                         mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
@@ -584,16 +587,20 @@ void genMipsCode() {
             case GETARRAY: {
                 //offset
                 string offset = midcode.y; //[]
-                string string1 = getVar(offset, 1);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET);
-                mipsCodeTable.emplace_back(mips_mult, "$t0", string1);
-                mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
+                if (!isNumber(offset)) {
+                    string string1 = getVar(offset, 1);
+                    mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET);
+                    mipsCodeTable.emplace_back(mips_mult, "$t0", string1);
+                    mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
+                }
+                else {
+                    mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET * stoi(offset));
+                }
                 //top
                 string funcBelong = ident2var.find(midcode.x)->second.func;
                 int addr = ident2var.find(midcode.x)->second.address;
                 if (funcBelong.empty()) {
-                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr);
-                    mipsCodeTable.emplace_back(mips_add, "$t1", "$t1", "$gp");
+                    mipsCodeTable.emplace_back(mips_addi, "$t1", "$gp", "", addr);
                     //绝对地址
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");//绝对地址
                 }
@@ -608,8 +615,7 @@ void genMipsCode() {
                         }
                     }
                     if (!insFlag) {
-                        mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
-                        mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
+                        mipsCodeTable.emplace_back(mips_addi, "$t1", "$fp", "", addr+8);
                         //绝对地址
                         if ( ident2var.find(midcode.x)->second.dim[0] == 0) {
                             mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
@@ -624,16 +630,20 @@ void genMipsCode() {
             case PUTARRAY: {
                 //offset
                 string offset = midcode.x; //[]
-                string string1 = getVar(offset, 1);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET);
-                mipsCodeTable.emplace_back(mips_mult, string1, "$t0");
-                mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
+                if (!isNumber(offset)) {
+                    string string1 = getVar(offset, 1);
+                    mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET);
+                    mipsCodeTable.emplace_back(mips_mult, "$t0", string1);
+                    mipsCodeTable.emplace_back(mips_mflo, "$t0");//[]*4
+                }
+                else {
+                    mipsCodeTable.emplace_back(mips_li, "$t0", "", "", INTOFFSET * stoi(offset));
+                }
                 //top
                 string funcBelong = ident2var.find(midcode.z)->second.func;
                 int addr = ident2var.find(midcode.z)->second.address;
                 if (funcBelong.empty()) {
-                    mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr);
-                    mipsCodeTable.emplace_back(mips_add, "$t1", "$t1", "$gp");
+                    mipsCodeTable.emplace_back(mips_addi, "$t1", "$gp", "", addr);
                     //绝对地址
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t0", "$t1");
                 }
@@ -648,8 +658,7 @@ void genMipsCode() {
                         }
                     }
                     if (!insFlag) {
-                        mipsCodeTable.emplace_back(mips_li, "$t1", "", "", addr + 8);
-                        mipsCodeTable.emplace_back(mips_add, "$t1", "$fp", "$t1");
+                        mipsCodeTable.emplace_back(mips_addi, "$t1", "$fp", "", addr+8);
                         if ( ident2var.find(midcode.z)->second.dim[0] == 0) {
                             mipsCodeTable.emplace_back(mips_lw, "$t1", "$t1", "", 0);
                         }
@@ -659,8 +668,8 @@ void genMipsCode() {
                     mipsCodeTable.emplace_back(mips_add, "$t2", "$t1", "$t0");
                 }
 
-                string1 = getVar(midcode.y, 1);
-                mipsCodeTable.emplace_back(mips_sw, string1, "$t2", "", 0);
+                string string2 = getVar(midcode.y, 1);
+                mipsCodeTable.emplace_back(mips_sw, string2, "$t2", "", 0);
                 break;
             }
             case EXIT: {

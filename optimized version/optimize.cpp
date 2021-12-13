@@ -8,8 +8,29 @@
 #include "optimize.h"
 
 extern vector<midCode> midCodeTable;
+extern vector<mipsCode> mipsCodeTable;
 extern vector<Variable> vTable;
 set<string> globalVar;
+
+set<mipsOperation> calculateOperation = {
+        mips_add,    //add $s1, $s2, $s3
+        mips_addi,   //addi $s1, $s2, -1
+        mips_sub,    //sub $s1, $s2, $s3
+        mips_subi,   //subi $s1, $s2, 1
+        mips_and,    //and $s1, $s2, $s3
+        mips_andi,   //andi $s1, $s2, 0x55AA
+        mips_or,     //or $s1, $s2, $s3
+        mips_ori,    //ori $s1, $s2, 0x55AA
+        mips_mflo,   //商/乘积
+        mips_mfhi,   //余数
+
+        mips_slt,    //slt $s1, $s2, $s3
+        mips_seq,    //seq $s1, $s2, $s3
+        mips_sne,    //sne $s1, $s2, $s3
+
+        mips_lw,     //lw $v1, 8($sp)
+
+};
 
 //基本快
 vector<int> block_beginNumber;
@@ -54,7 +75,7 @@ bool isGlobalVar(string ident) {
 }
 
 //窥孔优化
-void digHole() {
+void midcodeDigHole() {
     vector<midCode> neoMidCodeTable;
     for (int i = 0; i < midCodeTable.size(); i++) {
 
@@ -922,9 +943,6 @@ void changeGlobal2Reg() {
     }
 }
 
-
-
-
 //更新midCodeTable
 void refreshMidCodeTable(){
     midCodeTable.clear();
@@ -935,11 +953,90 @@ void refreshMidCodeTable(){
     }
 }
 
+//# PUSHADDR variable_4[0]
+//li $t1,0
+//li $t0,4
+//mult $t0,$t1
+//mflo $t0
+void multdighole() {
+    vector<mipsCode> neoMipsCodeTable;
+    for (int i = 0; i < mipsCodeTable.size(); i++) {
+        if (i < mipsCodeTable.size()-3) {
+            if ((mipsCodeTable[i].op == mips_li) &&
+                (mipsCodeTable[i+1].op == mips_li) &&
+                (mipsCodeTable[i+2].op == mips_mult) &&
+                (mipsCodeTable[i+3].op == mips_mflo)){
+                int result = mipsCodeTable[i].imm * mipsCodeTable[i+1].imm;
+                string reg = mipsCodeTable[i+3].z;
+                i += 3;
+                neoMipsCodeTable.emplace_back(mips_li, reg, "", "", result);
+                continue;
+            }
+        }
+        neoMipsCodeTable.push_back(mipsCodeTable[i]);
+    }
+    mipsCodeTable = neoMipsCodeTable;
+}
+//li $t1,1
+//move $a3,$t1
+//
+//# $t6 = 0
+//li $t1,0
+//move $t0,$t1
+//move $t6,$t0
+void liMoveDigHole() {
+    for (int times = 0; times < 3; times++) {
+        vector<mipsCode> neoMipsCodeTable;
+        for (int i = 0; i < mipsCodeTable.size(); i++) {
+            if (i < mipsCodeTable.size()-1) {
+                if ((mipsCodeTable[i].op == mips_li) &&
+                    (mipsCodeTable[i+1].op == mips_move) &&
+                    (mipsCodeTable[i].z == mipsCodeTable[i+1].x)){
+                    int num = mipsCodeTable[i].imm;
+                    string reg = mipsCodeTable[i+1].z;
+                    i += 1;
+                    neoMipsCodeTable.emplace_back(mips_li, reg, "", "", num);
+                    continue;
+                }
+            }
+            neoMipsCodeTable.push_back(mipsCodeTable[i]);
+        }
+        mipsCodeTable = neoMipsCodeTable;
+    }
+
+}
+//运算多了个move
+//add $t0,$t4,$t7
+//move $t5,$t0
+void calculateDigHole() {
+    vector<mipsCode> neoMipsCodeTable;
+    for (int i = 0; i < mipsCodeTable.size(); i++) {
+        if (i < mipsCodeTable.size()-1) {
+            if ((calculateOperation.find(mipsCodeTable[i].op) != calculateOperation.end()) &&
+                (mipsCodeTable[i+1].op == mips_move) &&
+                (mipsCodeTable[i].z == mipsCodeTable[i+1].x)){
+                mipsCode curMipsCode = mipsCodeTable[i];
+                curMipsCode.z = mipsCodeTable[i+1].z;
+                neoMipsCodeTable.push_back(curMipsCode);
+                i += 1;
+                continue;
+            }
+        }
+        neoMipsCodeTable.push_back(mipsCodeTable[i]);
+    }
+    mipsCodeTable = neoMipsCodeTable;
+}
+void mipscodeOptimize() {
+    multdighole();
+    liMoveDigHole();
+    calculateDigHole();
+}
+
 
 //主优化函数
-void optimize() {
+void midcodeOptimize() {
     initGlobalVar();//全局变量
-    digHole();  //各种窥孔
+    midcodeDigHole();  //各种窥孔
     genBlock(); //生成基本块
     linkBlocks(); //生成流图
     calUseDef(); //计算块的use和def
@@ -950,6 +1047,7 @@ void optimize() {
     changeGlobal2Reg(); //全局变量Reg分配
     refreshMidCodeTable(); //block.midcode -> midcodeTable
 }
+
 
 
 /*useles

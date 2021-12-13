@@ -46,4 +46,5 @@ public:
 
 bool isInsVar(string ident);
 
-void optimize();
+void midcodeOptimize();
+void mipscodeOptimize();
