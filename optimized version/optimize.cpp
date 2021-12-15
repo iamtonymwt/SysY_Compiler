@@ -21,6 +21,7 @@ set<mipsOperation> calculateOperation = {
         mips_andi,   //andi $s1, $s2, 0x55AA
         mips_or,     //or $s1, $s2, $s3
         mips_ori,    //ori $s1, $s2, 0x55AA
+        mips_mul,    //mul $s1, $s2, $s3
         mips_mflo,   //商/乘积
         mips_mfhi,   //余数
 
@@ -377,7 +378,7 @@ void calInOut() {
             bool updated = false;
             for (int i = indexs.size()-1; i >= 0; i--) {
                 Block& block = blocks[indexs[i]];
-                updated = updated || calBlockInOut(block);
+                updated = calBlockInOut(block) || updated;
             }
             if (!updated) {
                 break;
@@ -841,6 +842,28 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                 case BZ:
                 case BNZ:{
                     iter->x = getGReg(false, iter->x);
+                    if ((curBlock.nextBlock1 != -1 && curBlock.nextBlock1 < curBlock.number) ||
+                        (curBlock.nextBlock2 != -1 && curBlock.nextBlock2 < curBlock.number)) {
+                        bool hasFuncFlag = false;
+                        for(int j = curBlock.nextBlock1; j <= curBlock.number; j++) {
+                            auto it = blocks[j].midCodeVector.begin();
+                            while (it != blocks[j].midCodeVector.end()) {
+                                if (it->op == CALL) {
+                                    hasFuncFlag = true;
+                                }
+                                it ++;
+                            }
+                        }
+                        if (hasFuncFlag) {
+                            for (int k = 0; k < 11; k++) {
+                                if (globalRegDirty[k]) {
+                                    iter = curBlock.midCodeVector.insert(iter,midCode(SAVE, globalReg[k], globalRegVar[k]));
+                                    iter++;
+                                }
+                            }
+                        }
+
+                    }
                     break;
                 }
                     //get z
@@ -863,12 +886,24 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                 case FUNC:{
                     iter ++;
                     for (int k = 0; k < 11; k++) {
-                        if (!globalRegVar[k].empty()) {
+                        if ((!globalRegVar[k].empty()) &&
+                            (globalVar.find(globalRegVar[k]) != globalVar.end())){
                             iter = curBlock.midCodeVector.insert(iter, midCode(LOAD, globalReg[k], globalRegVar[k]));
                             iter ++;
                         }
                     }
                     iter --;
+                    break;
+                }
+                case PARAM:{
+                    for (int k = 0; k < 11; k++) {
+                        if ((!globalRegVar[k].empty()) &&
+                            (iter->z == globalRegVar[k])){
+                            iter++;
+                            iter = curBlock.midCodeVector.insert(iter, midCode(LOAD, globalReg[k], globalRegVar[k]));
+                            break;
+                        }
+                    }
                     break;
                 }
                 case CALL:{
@@ -900,7 +935,8 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                 }
                 case GOTO: {
                     if ((curBlock.nextBlock1 != -1 && curBlock.nextBlock1 < curBlock.number) ||
-                        (curBlock.nextBlock2 != -1 && curBlock.nextBlock2 < curBlock.number)) {
+                        (curBlock.nextBlock2 != -1 && curBlock.nextBlock2 < curBlock.number) ||
+                            (iter->x == "continue")) {
                         for (int k = 0; k < 11; k++) {
                             if (globalRegDirty[k]) {
                                 iter = curBlock.midCodeVector.insert(iter,midCode(SAVE, globalReg[k], globalRegVar[k]));

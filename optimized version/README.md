@@ -48,6 +48,18 @@
 
 * mips窥孔，删除无用代码
 
+* mul指令比mult+mflo操作要少一个other
+
+* subi $t0, $t1, 100用addi $t0,$t1, -100替换；
+
+* 循环while
+
+* 全局寄存器分配
+  		函数开头不用全load （全局）
+  		循环不全save 循环底看func， continue全存
+  		函数call完load（）？
+  		寄存器数量	
+
 
 
 正确性检查：**通过**

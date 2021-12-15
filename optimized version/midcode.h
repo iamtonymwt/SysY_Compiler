@@ -24,7 +24,7 @@ enum operation {
 
     //z:label
     //x:op
-    GOTO,  //无条件跳转 z
+    GOTO,  //无条件跳转 z, x = "continue"
     BZ,    //为0跳转 z x
     BNZ,   //为1跳转 z x
     LABEL, //标号 z, x:while

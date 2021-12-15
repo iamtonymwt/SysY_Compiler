@@ -16,6 +16,7 @@ enum mipsOperation {
     mips_ori,    //ori $s1, $s2, 0x55AA
 
     mips_mult,   //mult $s1, $s2
+    mips_mul,    //mul $s1, $s2, $s3
     mips_div,    //div $s1, $s2
     mips_mflo,   //商/乘积
     mips_mfhi,   //余数
@@ -23,6 +24,7 @@ enum mipsOperation {
     mips_slt,    //slt $s1, $s2, $s3
     mips_seq,    //seq $s1, $s2, $s3
     mips_sne,    //sne $s1, $s2, $s3
+
     mips_beq,    //beq $s1, $s2, label
     mips_bne,    //bne $s1, $s2, label
     mips_j,      //j Loop_End

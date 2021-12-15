@@ -188,7 +188,8 @@ void genMipsCode() {
             case MINUOP: {
                 if (isNumber(midcode.y)) {
                     string string1 = getVar(midcode.x, 1);
-                    mipsCodeTable.emplace_back(mips_subi, "$t0", string1, "", stoi(midcode.y));
+//                    mipsCodeTable.emplace_back(mips_subi, "$t0", string1, "", stoi(midcode.y));
+                    mipsCodeTable.emplace_back(mips_addi, "$t0", string1, "", -1*stoi(midcode.y));
                     pushVar("$t0", midcode.z);
                 }
                 else {
@@ -202,8 +203,9 @@ void genMipsCode() {
             case MULTOP: {
                 string string1 = getVar(midcode.x, 1);
                 string string2 = getVar(midcode.y, 2);
-                mipsCodeTable.emplace_back(mips_mult, string1, string2);
-                mipsCodeTable.emplace_back(mips_mflo, "$t0");
+//                mipsCodeTable.emplace_back(mips_mult, string1, string2);
+//                mipsCodeTable.emplace_back(mips_mflo, "$t0");
+                mipsCodeTable.emplace_back(mips_mul, "$t0", string1, string2);
                 pushVar("$t0", midcode.z);
                 break;
             }
@@ -301,35 +303,23 @@ void genMipsCode() {
                 string label = getInsLabel();
                 string string1 = getVar(midcode.x, 1);
                 string string2 = getVar(midcode.y, 2);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
-                mipsCodeTable.emplace_back(mips_bne, string1, string2, label);
-                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
-                mipsCodeTable.emplace_back(mips_label, label);
+//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
+//                mipsCodeTable.emplace_back(mips_bne, string1, string2, label);
+//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
+//                mipsCodeTable.emplace_back(mips_label, label);
+                mipsCodeTable.emplace_back(mips_seq, "$t0", string1, string2);
                 pushVar("$t0", midcode.z);
                 break;
             }
             case NEQOP: {
-//                string label = getInsLabel();
                 string string1 = getVar(midcode.x, 1);
                 string string2 = getVar(midcode.y, 2);
-//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
-//                mipsCodeTable.emplace_back(mips_beq, string1, string2, label);
-//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
-//                mipsCodeTable.emplace_back(mips_label, label);
                 mipsCodeTable.emplace_back(mips_sne, "$t0", string1, string2);
                 pushVar("$t0", midcode.z);
                 break;
             }
             case NOTOP: {
-//                string label1 = getInsLabel();
-//                string label2 = getInsLabel();
                 string string1 = getVar(midcode.x, 1);
-//                mipsCodeTable.emplace_back(mips_beq, string1, "$zero", label1);
-//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 0);
-//                mipsCodeTable.emplace_back(mips_j, label2);
-//                mipsCodeTable.emplace_back(mips_label, label1);
-//                mipsCodeTable.emplace_back(mips_li, "$t0", "", "", 1);
-//                mipsCodeTable.emplace_back(mips_label, label2);
                 mipsCodeTable.emplace_back(mips_seq, "$t0", string1, "$zero");
                 pushVar("$t0", midcode.z);
                 break;
@@ -732,6 +722,9 @@ void outputMipsCode(ofstream& mipsCodefile) {
                 break;
             case mips_mult:
                 mipsCodefile << "mult " << mc.z << "," << mc.x << "\n";
+                break;
+            case mips_mul:
+                mipsCodefile << "mul " << mc.z << "," << mc.x << "," << mc.y << "\n";
                 break;
             case mips_div:
                 mipsCodefile << "div " << mc.z << "," << mc.x << "\n";

@@ -440,22 +440,48 @@ bool Stmt() {
         }
 
         //'while' '(' Cond ')' Stmt
+//        goto label2
+//        label1:
+//        <语句>
+//        label2: (begin)
+//        if <条件> goto label1
+//        label3: (end)
         case WHILETK:{
 //            print();
             string loop_begin = getLabel();
             string loop_end = getLabel();
-            midCodeTable.emplace_back(LABEL, loop_begin, "loop_begin");
+            string loop_label1 = getLabel();
+//            midCodeTable.emplace_back(LABEL, loop_begin, "loop_begin");
             whileLabel.emplace_back(make_pair(loop_begin, loop_end));
+            midCodeTable.emplace_back(GOTO, loop_begin);
+            midCodeTable.emplace_back(LABEL, loop_label1);
             getsymP();
             getsymNP();
-            string op = Cond();
-            midCodeTable.emplace_back(BZ, loop_end, op);
+            string op = Cond();//会产生<cond>midcodes
+
+            //<cond>相关代码
+            vector<midCode> insMidCode;
+            auto iter = midCodeTable.end() - 1;
+            while (iter->z != loop_label1) {
+                insMidCode.insert(insMidCode.begin(), *iter);
+                iter = midCodeTable.erase(iter);
+                iter --;
+            }
+
+//            midCodeTable.emplace_back(BZ, loop_end, op);
 //            print();
             getsymNP();
             Stmt();
             whileLabel.pop_back();
-            midCodeTable.emplace_back(GOTO, loop_begin);
-            midCodeTable.emplace_back(LABEL, loop_end, "loop_end");
+            midCodeTable.emplace_back(LABEL, loop_begin);
+
+            //<cond>相关代码
+            midCodeTable.insert(midCodeTable.end(), insMidCode.begin(), insMidCode.end());
+
+            midCodeTable.emplace_back(BNZ, loop_label1, op);
+            midCodeTable.emplace_back(LABEL, loop_end);
+//            midCodeTable.emplace_back(GOTO, loop_begin);
+//            midCodeTable.emplace_back(LABEL, loop_end, "loop_end");
             break;
         }
 
@@ -471,7 +497,7 @@ bool Stmt() {
 //            print();
             getsymP();
             getsymNP();
-            midCodeTable.emplace_back(GOTO, whileLabel[whileLabel.size()-1].first);
+            midCodeTable.emplace_back(GOTO, whileLabel[whileLabel.size()-1].first, "continue");
             break;
         }
 
