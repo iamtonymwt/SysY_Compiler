@@ -76,6 +76,16 @@ bool isGlobalVar(string ident) {
     return false;
 }
 
+//更新midCodeTable
+void refreshMidCodeTable(){
+    midCodeTable.clear();
+    for (int i = 0; i < blocks.size(); i++) {
+        for (int j = 0; j < blocks[i].midCodeVector.size(); j++){
+            midCodeTable.push_back(blocks[i].midCodeVector[j]);
+        }
+    }
+}
+
 //窥孔优化
 void midcodeDigHole() {
     vector<midCode> neoMidCodeTable;
@@ -93,29 +103,6 @@ void midcodeDigHole() {
                 continue;
             }
         }
-
-        //BZ label_3($t3 == 0)
-        //variable_5 = 1
-        //GOTO label_4
-        //LABEL: label_3
-        //variable_5 = 0
-        //LABEL: label_4
-        //BZ label_1(variable_5 == 0)
-//        if (i < midCodeTable.size()-6) {
-//            if ((midCodeTable[i].op == BZ)
-//                && (midCodeTable[i+1].op == ASSIGNOP)
-//                && (midCodeTable[i+2].op == GOTO)
-//                && (midCodeTable[i+3].op == LABEL)
-//                && (midCodeTable[i+4].op == ASSIGNOP)
-//                && (midCodeTable[i+5].op == LABEL)
-//                && (midCodeTable[i+6].op == BZ)
-//                && (midCodeTable[i+1].z == midCodeTable[i+4].z)
-//                && (midCodeTable[i+4].z == midCodeTable[i+6].x)){
-//                neoMidCodeTable.emplace_back(BZ, midCodeTable[i+6].z, midCodeTable[i].x);
-//                i += 6;
-//                continue;
-//            }
-//        }
 
 
         //default
@@ -389,6 +376,223 @@ void calInOut() {
     }
 }
 
+//常量合并
+void mergeConst() {
+    auto iter = blocks.begin();
+    if (blocks.begin()->midCodeVector[0].op != FUNC) {//全局变量块
+        iter ++;
+    }
+    while (iter != blocks.end()) {
+        vector<midCode> &midCodeTable = iter->midCodeVector;
+        for (int i = 0; i < midCodeTable.size(); i++) {
+            if ((isNumber(midCodeTable[i].x)) && (isNumber(midCodeTable[i].y))) {
+                int x = stoi(midCodeTable[i].x);
+                int y = stoi(midCodeTable[i].y);
+                switch (midCodeTable[i].op) {
+                    case PLUSOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x + y));
+                        break;
+                    }
+                    case MINUOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x - y));
+                        break;
+                    }
+                    case MULTOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x * y));
+                        break;
+                    }
+                    case DIVOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x / y));
+                        break;
+                    }
+                    case MODOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x % y));
+                        break;
+                    }
+                    case ANDOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x && y));
+                        break;
+                    }
+                    case OROP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x || y));
+                        break;
+                    }
+                    case LSSOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x < y));
+                        break;
+                    }
+                    case LEQOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x <= y));
+                        break;
+                    }
+                    case GREOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x > y));
+                        break;
+                    }
+                    case GEQOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x >= y));
+                        break;
+                    }
+                    case EQLOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x == y));
+                        break;
+                    }
+                    case NEQOP: {
+                        midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, to_string(x != y));
+                        break;
+                    }
+                }
+            }
+            else if ((isNumber(midCodeTable[i].x)) && (midCodeTable[i].op == NOTOP)) {
+                int x = stoi(midCodeTable[i].x);
+                if (x == 1) {
+                    midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, "0");
+                } else if (x == 0) {
+                    midCodeTable[i] = midCode(ASSIGNOP, midCodeTable[i].z, "1");
+                }
+            }
+        }
+        iter++;
+    }
+}
+//更改映射关系
+void changeInSet(map<string, string>& assignSet, string ident) {
+    string rval;
+    auto iter = assignSet.begin();
+    while (iter != assignSet.end()) {
+        if(iter->first == ident) {
+            rval = iter->second;
+            iter = assignSet.erase(iter);
+            continue;
+        }
+        iter ++;
+    }
+    if (!rval.empty()) {
+        iter = assignSet.begin();
+        while (iter != assignSet.end()) {
+            if(iter->second == ident) {
+                 iter->second = rval;
+            }
+            iter ++;
+        }
+    }
+    iter = assignSet.begin();
+    while (iter != assignSet.end()) {
+        if((iter->first == ident) || (iter->second == ident)) {
+            iter = assignSet.erase(iter);
+            continue;
+        }
+        iter ++;
+    }
+}
+//查找映射关系
+string findInSet(map<string, string>& assignSet, string ident) {
+    if (assignSet.find(ident) != assignSet.end()) {
+        return assignSet.find(ident)->second;
+    }
+    return ident;
+}
+//块内变量传播
+void blockVarSpread(Block& block) {
+    map<string, string> assignSet;
+    vector<midCode>& curMidCode = block.midCodeVector;
+    auto iter = curMidCode.begin();
+    while (iter != curMidCode.end()) {
+        switch (iter->op) {
+            //put z get x y
+            case PLUSOP:
+            case MINUOP:
+            case MULTOP:
+            case DIVOP:
+            case MODOP:
+            case ANDOP:
+            case OROP:
+            case LSSOP:
+            case LEQOP:
+            case GREOP:
+            case GEQOP:
+            case EQLOP:
+            case NEQOP:
+            {
+                changeInSet(assignSet, iter->z);
+                iter->x = findInSet(assignSet, iter->x);
+                iter->y = findInSet(assignSet, iter->y);
+                break;
+            }
+            case GETARRAY:
+            {
+                changeInSet(assignSet, iter->z);
+                iter->x = findInSet(assignSet, iter->x);
+                break;
+            }
+            case PUTARRAY:
+            {
+                iter->x = findInSet(assignSet, iter->x);
+                iter->y = findInSet(assignSet, iter->y);
+                break;
+            }
+                //put z get x
+            case NOTOP:
+            {
+                changeInSet(assignSet, iter->z);
+                iter->x = findInSet(assignSet, iter->x);
+                break;
+            }
+            case ASSIGNOP:{
+                changeInSet(assignSet, iter->z);
+                iter->x = findInSet(assignSet, iter->x);
+                if ((!isInsVar(iter->z))&&(!isInsVar(iter->x))) {
+                    assignSet.insert(make_pair(iter->z, iter->x));
+                }
+                break;
+            }
+                //get x
+            case BZ:
+            case BNZ:{
+                iter->x = findInSet(assignSet, iter->x);
+                break;
+            }
+                //get z
+            case PUSH:
+            case RET:
+            case PRINTD:{
+                iter->z = findInSet(assignSet, iter->z);
+                break;
+            }
+                //get z x
+            case PUSHADDR:{
+                iter->x = findInSet(assignSet, iter->x);
+                break;
+            }
+                //put z
+            case RETVALUE:
+            case SCAN:{
+                changeInSet(assignSet, iter->z);
+                break;
+            }
+            default:
+                break;
+        }
+        iter ++;
+    }
+}
+//变量传播
+void varSpread() {
+    //共循环5次
+    for (int times = 0; times < 5; times ++) {
+        auto iter = blocks.begin();
+        if (blocks.begin()->midCodeVector[0].op != FUNC) {//全局变量块
+            iter ++;
+        }
+        while (iter != blocks.end()) {
+            blockVarSpread(*iter);
+            iter ++;
+        }
+        mergeConst();
+        refreshMidCodeTable();
+    }
+}
+
 //死代码删除
 bool delDeadCodeBlock(Block& block) {
     bool updated = false;
@@ -516,6 +720,8 @@ bool delDeadCodeBlock(Block& block) {
 void delDeadCode() {
     bool updated;
     do {
+        calUseDef();
+        calInOut();
         updated = false;
         auto iter = blocks.begin();
         if (blocks.begin()->midCodeVector[0].op != FUNC) {//全局变量块
@@ -525,10 +731,9 @@ void delDeadCode() {
             updated = updated || delDeadCodeBlock(*iter);
             iter ++;
         }
-        calUseDef();
-        calInOut();
     }
     while (updated);
+    refreshMidCodeTable();
 }
 
 //查找空中间变量寄存器
@@ -983,16 +1188,6 @@ void changeGlobal2Reg() {
     }
 }
 
-//更新midCodeTable
-void refreshMidCodeTable(){
-    midCodeTable.clear();
-    for (int i = 0; i < blocks.size(); i++) {
-        for (int j = 0; j < blocks[i].midCodeVector.size(); j++){
-            midCodeTable.push_back(blocks[i].midCodeVector[j]);
-        }
-    }
-}
-
 //# PUSHADDR variable_4[0]
 //li $t1,0
 //li $t0,4
@@ -1081,6 +1276,7 @@ void midcodeOptimize() {
     linkBlocks(); //生成流图
     calUseDef(); //计算块的use和def
     calInOut(); //计算块的in和out
+    varSpread(); //变量传播（常量合并）
     delDeadCode(); //删除死代码
     changeIns2Reg(); //中间变量Reg分配
     refreshMidCodeTable(); //block.midcode -> midcodeTable

@@ -56,12 +56,16 @@
 
 * 全局寄存器分配
    		函数开头不用全load （全局）
-   		PARAM LOAD
-   		循环不全save 循环底看func， continue全存
-   		函数call前save（dirty && out||global）
-   		函数call完load（out）
-   		寄存器数量	
-   		$v1,$k0,$k1
+      		PARAM LOAD
+      		循环不全save 循环底看func， continue全存
+      		函数call前save（dirty && out||global）
+      		函数call完load（out）
+      		寄存器数量	
+      		$v1,$k0,$k1
+   
+* 基本快内（未考虑ins）
+    		常量合并
+    		复制传播
 
 
 
