@@ -45,10 +45,11 @@ bool insRegUse[3] = {false, false, false};
 string insRegVar[3] = {"", "", ""};
 
 //全局寄存器
-string globalReg[11] = {"$t6","$t7","$t8","$t9","$s1","$s2","$s3","$s4","$s5","$s6","$s7"};
+string globalReg[14] = {"$t6","$t7","$t8","$t9","$s1","$s2","$s3","$s4","$s5","$s6","$s7","$v1","$k0","$k1"};
 //bool globalRegUse[11] = {false, false, false, false, false, false, false, false, false, false, false};
-string globalRegVar[11] = {"","","","","","","","","","",""};
-bool globalRegDirty[11] = {false, false, false, false, false, false, false, false, false, false, false};
+string globalRegVar[14] = {"","","","","","","","","","","","","",""};
+bool globalRegDirty[14] = {false, false, false, false, false, false, false, false, false, false, false, false, false,
+                           false};
 map<string, int> varUseTimes;
 vector<string> funcParams;
 
@@ -681,7 +682,7 @@ void varAddTimes(string varIdent) {
     }
 }
 //func：变量使用次数
-void calFuncVarTimes(int beginBlock, int endBLock) {
+void calFuncVarTimes(int beginBlock, int endBLock)  {
     varUseTimes.clear();
     funcParams.clear();
     //参数
@@ -768,7 +769,7 @@ void calFuncVarTimes(int beginBlock, int endBLock) {
 //func：分配全局寄存器
 void disGlobalReg() {
     int i = 0;
-    while ((i < 11) && (varUseTimes.size() != 0)) {
+    while ((i < 14) && (varUseTimes.size() != 0)) {
         auto maxIter = varUseTimes.begin();
         auto iter = varUseTimes.begin();
         while (iter != varUseTimes.end()) {
@@ -784,7 +785,7 @@ void disGlobalReg() {
 }
 //func: 找对应的GReg
 string getGReg(bool isDef, string varIdent) {
-    for (int i = 0; i < 11; i++) {
+    for (int i = 0; i < 14; i++) {
         if (globalRegVar[i] == varIdent) {
             if (isDef) {
                 globalRegDirty[i] = true;
@@ -855,7 +856,7 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                             }
                         }
                         if (hasFuncFlag) {
-                            for (int k = 0; k < 11; k++) {
+                            for (int k = 0; k < 14; k++) {
                                 if (globalRegDirty[k]) {
                                     iter = curBlock.midCodeVector.insert(iter,midCode(SAVE, globalReg[k], globalRegVar[k]));
                                     iter++;
@@ -885,7 +886,7 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                 }
                 case FUNC:{
                     iter ++;
-                    for (int k = 0; k < 11; k++) {
+                    for (int k = 0; k < 14; k++) {
                         if ((!globalRegVar[k].empty()) &&
                             (globalVar.find(globalRegVar[k]) != globalVar.end())){
                             iter = curBlock.midCodeVector.insert(iter, midCode(LOAD, globalReg[k], globalRegVar[k]));
@@ -896,7 +897,7 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                     break;
                 }
                 case PARAM:{
-                    for (int k = 0; k < 11; k++) {
+                    for (int k = 0; k < 14; k++) {
                         if ((!globalRegVar[k].empty()) &&
                             (iter->z == globalRegVar[k])){
                             iter++;
@@ -907,15 +908,18 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                     break;
                 }
                 case CALL:{
-                    for (int k = 0; k < 11; k++) {
-                        if (globalRegDirty[k]) {
+                    for (int k = 0; k < 14; k++) {
+                        if (globalRegDirty[k] &&
+                                ((curBlock.out.find(globalRegVar[k]) != curBlock.out.end())
+                                || (globalVar.find(globalRegVar[k]) != globalVar.end()))) {
                             iter = curBlock.midCodeVector.insert(iter, midCode(SAVE, globalReg[k], globalRegVar[k]));
                             iter ++;
                         }
                     }
                     iter ++;
-                    for (int k = 0; k < 11; k++) {
-                        if (!globalRegVar[k].empty()) {
+                    for (int k = 0; k < 14; k++) {
+                        if (!globalRegVar[k].empty() &&
+                                (curBlock.out.find(globalRegVar[k]) != curBlock.out.end())) {
                             iter = curBlock.midCodeVector.insert(iter, midCode(LOAD, globalReg[k], globalRegVar[k]));
                             iter ++;
                         }
@@ -925,7 +929,7 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                 }
                 case RET:{
                     iter->z = getGReg(false, iter->z);
-                    for (int k = 0; k < 11; k++) {
+                    for (int k = 0; k < 14; k++) {
                         if (!globalRegVar[k].empty() && (globalVar.find(globalRegVar[k])!=globalVar.end())) {
                             iter = curBlock.midCodeVector.insert(iter, midCode(SAVE, globalReg[k], globalRegVar[k]));
                             iter ++;
@@ -937,7 +941,7 @@ void changeGlobalReg(int beginBlock, int endBLock) {
                     if ((curBlock.nextBlock1 != -1 && curBlock.nextBlock1 < curBlock.number) ||
                         (curBlock.nextBlock2 != -1 && curBlock.nextBlock2 < curBlock.number) ||
                             (iter->x == "continue")) {
-                        for (int k = 0; k < 11; k++) {
+                        for (int k = 0; k < 14; k++) {
                             if (globalRegDirty[k]) {
                                 iter = curBlock.midCodeVector.insert(iter,midCode(SAVE, globalReg[k], globalRegVar[k]));
                                 iter++;
@@ -968,7 +972,7 @@ void changeGlobal2Reg() {
         int beginBlock = funcsBeginPlace[i];
         int endBLock = funcsBeginPlace[i+1] - 1;
         int k = 0;
-        while (k < 11) {
+        while (k < 14) {
             globalRegVar[k] = "";
             globalRegDirty[k] = false;
             k++;
