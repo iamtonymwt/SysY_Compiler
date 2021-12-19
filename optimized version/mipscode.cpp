@@ -32,7 +32,7 @@ string paraRegVar[3] = {"", "", ""};
  *  $a1, $a2, $a3 函数传参用
  *  $t0, $t1, $t2 运算用
  *  $t3, $t4, $t5 ins_Var 中间变量使用
- *  $t6,$t7,$t8,$t9,$s1,$s2,$s3,$s4,$s5,$s6,$s7 var_Var 跨基本块变量使用
+ *  $t6,$t7,$t8,$t9,$s1,$s2,$s3,$s4,$s5,$s6,$s7,$v1,$k0,$k1 var_Var 跨基本块变量使用
  *  $a0, $v0 与 syscall使用
  *  $s0 函数返回值
  *  hi, lo
@@ -326,8 +326,8 @@ void genMipsCode() {
             }
             case ASSIGNOP: {
                 string string1 = getVar(midcode.x, 1);
-                mipsCodeTable.emplace_back(mips_move, "$t0", string1);
-                pushVar("$t0", midcode.z);
+//                mipsCodeTable.emplace_back(mips_move, "$t0", string1);
+                pushVar(string1, midcode.z);
                 break;
             }
             case GOTO: {

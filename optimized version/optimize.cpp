@@ -30,7 +30,7 @@ set<mipsOperation> calculateOperation = {
         mips_sne,    //sne $s1, $s2, $s3
 
         mips_lw,     //lw $v1, 8($sp)
-
+        mips_move,   //move $v1, $v2
 };
 
 //基本快
@@ -86,8 +86,28 @@ void refreshMidCodeTable(){
     }
 }
 
+set<operation> calcuSet = {
+        PLUSOP, //+ z x y
+        MINUOP, //- z x y
+        MULTOP, //* z x y
+        DIVOP,  // / z x y
+        MODOP,  // % z x y
+        ANDOP,  // && z x y
+        OROP,   // || z x y
+        LSSOP,  //< z x y
+        LEQOP,  //<= z x y
+        GREOP,  //> z x y
+        GEQOP,  //>= z x y
+        EQLOP,  //== z x y
+        NEQOP,  //!= z x y
+        NOTOP,  //! z x
+
+        ASSIGNOP,  //= z x
+        RETVALUE, //函数返回值赋值 z:ide
+        GETARRAY,  //取数组的值  z:ident x:ident y:offset
+};
 //窥孔优化
-void midcodeDigHole() {
+void midcodeDigHole1() {
     vector<midCode> neoMidCodeTable;
     for (int i = 0; i < midCodeTable.size(); i++) {
 
@@ -96,9 +116,11 @@ void midcodeDigHole() {
         if (i < midCodeTable.size()-1) {
             midCode midcode1 = midCodeTable[i];
             midCode midcode2 = midCodeTable[i+1];
-            if ((0 <= midcode1.op) && (midcode1.op <= 4) && (midcode2.op == ASSIGNOP) &&
+            if ((calcuSet.find(midcode1.op)!=calcuSet.end()) && (midcode2.op == ASSIGNOP) &&
                 isInsVar(midcode1.z) && (midcode1.z == midcode2.x)) {
-                neoMidCodeTable.emplace_back(midcode1.op, midcode2.z, midcode1.x, midcode1.y);
+                midCode insMidcode = midcode1;
+                insMidcode.z = midcode2.z;
+                neoMidCodeTable.push_back(insMidcode);
                 i += 1;
                 continue;
             }
@@ -281,6 +303,7 @@ void calUseDef() {
                     //get z
                 case PUSH:
                 case RET:
+                case SAVE:
                 case PRINTD:{
                     add2use(curBlock, curMidCode.z);
                     break;
@@ -293,6 +316,7 @@ void calUseDef() {
                 }
                     //put z
                 case RETVALUE:
+                case LOAD:
                 case SCAN:{
                     add2def(curBlock,curMidCode.z);
                     break;
@@ -579,7 +603,7 @@ void blockVarSpread(Block& block) {
 //变量传播
 void varSpread() {
     //共循环5次
-    for (int times = 0; times < 5; times ++) {
+    for (int times = 0; times < 20; times ++) {
         auto iter = blocks.begin();
         if (blocks.begin()->midCodeVector[0].op != FUNC) {//全局变量块
             iter ++;
@@ -677,6 +701,7 @@ bool delDeadCodeBlock(Block& block) {
                 //get z
             case PUSH:
             case RET:
+            case SAVE:
             case PRINTD:{
                 cantDelSet.insert((*iter).z);
                 iter --;
@@ -1271,15 +1296,18 @@ void mipscodeOptimize() {
 //主优化函数
 void midcodeOptimize() {
     initGlobalVar();//全局变量
-    midcodeDigHole();  //各种窥孔
+    midcodeDigHole1();  //各种窥孔
     genBlock(); //生成基本块
     linkBlocks(); //生成流图
     calUseDef(); //计算块的use和def
     calInOut(); //计算块的in和out
-    varSpread(); //变量传播（常量合并）
-    delDeadCode(); //删除死代码
+
     changeIns2Reg(); //中间变量Reg分配
     refreshMidCodeTable(); //block.midcode -> midcodeTable
+
+    varSpread(); //变量传播（常量合并）
+    delDeadCode(); //删除死代码
+
     changeGlobal2Reg(); //全局变量Reg分配
     refreshMidCodeTable(); //block.midcode -> midcodeTable
 }
