@@ -66,18 +66,26 @@
 * 基本快内（未考虑ins）
     		常量合并
         		复制传播
-    
-    复制传播可以放在寄存器分配的后面？
-    		int main() {
-    		int a,b,c,d,e,f;
-    		a = 1;
-    		b = a * a + a;
-    		c = a * a * a;
-    		d = b * c + b + c;
-    		e = d;
-    		f = 2 * e + a;
-    		printf("%d",f);
-    		}
+               复制传播可以放在寄存器分配的后面
+        		int main() {
+        		int a,b,c,d,e,f;
+        		a = 1;
+        		b = a * a + a;
+        		c = a * a * a;
+        		d = b * c + b + c;
+        		e = d;
+        		f = 2 * e + a;
+        		printf("%d",f);
+        		}
+
+* 运算强度削弱：除法方案 ppt
+  	x / 2^n = 
+  		srl $a0, $s1, 31
+  		addu $t0, $s1, $a0
+  		sra $t3, $t0, 1
+  	x / -2^n, 0/x=0，x/1=x
+  
+* main return 重写了一下
 
 
 

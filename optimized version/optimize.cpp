@@ -31,6 +31,10 @@ set<mipsOperation> calculateOperation = {
 
         mips_lw,     //lw $v1, 8($sp)
         mips_move,   //move $v1, $v2
+
+        mips_sra,
+        mips_addu,
+        mips_srl,
 };
 
 //基本快

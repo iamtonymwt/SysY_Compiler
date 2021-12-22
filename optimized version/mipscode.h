@@ -21,6 +21,10 @@ enum mipsOperation {
     mips_mflo,   //商/乘积
     mips_mfhi,   //余数
 
+    mips_srl,   //srl $s1, $s2, 1
+    mips_sra,   //sra $s1, $s2, 1
+    mips_addu,  //addu $s1, $s2, $s3
+
     mips_slt,    //slt $s1, $s2, $s3
     mips_seq,    //seq $s1, $s2, $s3
     mips_sne,    //sne $s1, $s2, $s3
