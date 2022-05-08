@@ -1,16 +1,24 @@
 ### Sys_Y compiler
 
+write in c++
+
+This is a toy compiler of sys_y grammar, which is shown beneath in chinese.
+
+This is the course project of BUAA 2021 Compiler Course
+
+This version has been worked through all the tests and exams, the structure instruments:
+
 * basic version 未优化版本
 * optimized version 优化版本
 * basic version +error(for exam) 上机考试版本
 
-* 文档是总结文档
+* documents 文档是总结文档
 
-* 样例是同学们编写的复合文法的测试样例
+* examples 样例是同学们编写的复合文法的测试样例
 
   
 
-**文法**：
+**Sys_Y Grammar**：
 
 ```cpp
 编译单元 CompUnit → {Decl} {FuncDef} MainFuncDef // 1.是否存在Decl 2.是否存在FuncDef
@@ -58,8 +66,8 @@
 常量表达式 ConstExp → AddExp 注：使⽤的Ident 必须是常量 // 存在即可
 ```
 
-已通过期末考核全部测试
+has been worked through all the tests 已通过期末考核全部测试
 
-生活不易，还请努力Orz
+life is hard, keep working bro :) 生活不易，还请努力Orz
 
-2021/12/22/22:35竣工
+finished at 2021/12/22/22:35竣工

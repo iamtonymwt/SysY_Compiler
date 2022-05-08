@@ -11,6 +11,19 @@
   * 有错误的时候把错误输出到error.txt
   * 没错误的时候生成中间代码和目标代码
 
-  
 
 期末考核样例已通过
+
+
+
+This version is based on 'basic version' 
+
+with new error handler
+
+for the test in the Course
+
+* which could accomplish:
+  * send error information to error.txt
+  * generate intermediate code and object code
+
+has worked through the final test
